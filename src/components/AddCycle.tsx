@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { CycleEntry } from '../types';
@@ -15,12 +15,12 @@ export function AddCycle({ onClose }: AddCycleProps) {
   const [startDate, setStartDate] = useState('');
   const [periodDuration, setPeriodDuration] = useState(defaultPeriodLength);
 
-  const computedEndDate = (() => {
+  const computedEndDate = useMemo(() => {
     if (!startDate) return null;
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + periodDuration - 1);
-    return d.toISOString().split('T')[0];
-  })();
+    const periodEndDate = new Date(startDate);
+    periodEndDate.setDate(periodEndDate.getDate() + periodDuration - 1);
+    return periodEndDate.toISOString().split('T')[0];
+  }, [startDate, periodDuration]);
 
   const formattedEndDate = computedEndDate
     ? new Date(computedEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })

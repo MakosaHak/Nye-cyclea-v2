@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Droplets, Heart, Sparkles, Plus } from 'luci
 import { StorageService } from '../services/storageService';
 import { PredictionService } from '../services/predictionService';
 import { CycleEntry, Prediction } from '../types';
+import { CalendarLegend } from './CalendarLegend';
 
 interface CalendarProps {
   onAddCycle: () => void;
@@ -86,16 +87,8 @@ export function Calendar({ onAddCycle }: CalendarProps) {
         return { type: 'predicted-period', label: 'Règles prévues' };
       }
 
-      // Uncertainty Window (Subtle indication of possible early/late start)
       if (prediction.predictedStartRange) {
-        const rangeStart = PredictionService.parseISOLocal(prediction.predictedStartRange[0]);
-        rangeStart.setHours(0, 0, 0, 0);
-        const rangeEnd = PredictionService.parseISOLocal(prediction.predictedStartRange[1]);
-        rangeEnd.setHours(0, 0, 0, 0);
-
-        if (checkDate >= rangeStart && checkDate <= rangeEnd) {
-          // Keep it clean
-        }
+        // Uncertainty window — no distinct styling, used by logic only
       }
 
       // Ovulation: prefer window if available
@@ -125,9 +118,6 @@ export function Calendar({ onAddCycle }: CalendarProps) {
       }
     }
 
-    // Almost all other days are considered 'safe' or low risk,
-    // but typically we want to exclude days immediately surrounding menstruation if we want to be very specific,
-    // but for simplicity in this "safe days" request, days not fertile/period are safe.
     return { type: 'safe', label: 'Jour sûr' };
   };
 
@@ -264,68 +254,7 @@ export function Calendar({ onAddCycle }: CalendarProps) {
         {/* Divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-rose-100 to-transparent mx-8 my-4" />
 
-        {/* Legend Section */}
-        <div className="p-8 pt-2 bg-gradient-to-b from-white to-rose-50/30">
-          <h3 className="text-gray-800 font-bold mb-6 text-lg text-center">
-            Comprendre votre cycle
-          </h3>
-          <div className="space-y-4">
-            {/* Legend Items */}
-            <div className="flex gap-4 items-center">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border cal-day-period shadow-sm">
-                <Droplets className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">Menstruation</p>
-                <p className="text-[10px] text-gray-500 leading-tight">Jours de règles (rouge).</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-center">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border-2 border-dashed cal-day-predicted">
-                <Droplets className="w-5 h-5 opacity-80" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">Règles Prévues</p>
-                <p className="text-[10px] text-gray-500 leading-tight">
-                  Date estimée du prochain cycle.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-center">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border cal-day-ovulation shadow-sm">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">Ovulation</p>
-                <p className="text-[10px] text-gray-500 leading-tight">Pic de fertilité (vert).</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-center">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border cal-day-fertile">
-                <Heart className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">Fenêtre Fertile</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Période ou la conception est possible.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-center">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border cal-day-safe">
-                <div className="w-2.5 h-2.5 rounded-full bg-green-600" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">Jours Sûrs</p>
-                <p className="text-[10px] text-gray-500 leading-tight">Faible probabilité.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CalendarLegend />
       </div>
 
       {/* Separated CTA */}
