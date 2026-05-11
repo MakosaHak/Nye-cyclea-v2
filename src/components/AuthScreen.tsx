@@ -4,6 +4,7 @@ import { StorageService } from '../services/storageService';
 import { AuthData } from '../types';
 import { supabase } from '../lib/supabase';
 import { SubscriptionService } from '../services/subscriptionService';
+import { PrivacyPolicyContent } from './PrivacyPolicyContent';
 
 interface AuthScreenProps {
   onLogin: () => void;
@@ -277,29 +278,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
               </button>
             </div>
             <div className="p-6 overflow-y-auto text-sm text-slate-600 space-y-4">
-              <p className="font-semibold text-rose-500">Dernière mise à jour : 25 février 2026</p>
-              
-              <section className="space-y-2">
-                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">1. Collecte des données</h4>
-                <p>Nye Cyclea collecte vos données de cycle (dates de règles, symptômes) pour fournir des prévisions. Ces données sont stockées localement sur votre appareil et synchronisées de manière sécurisée si vous créez un compte.</p>
-              </section>
-
-              <section className="space-y-2">
-                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">2. Utilisation</h4>
-                <p>Vos informations sont utilisées exclusivement pour le calcul de votre cycle menstruel et l'envoi de notifications de rappel. Nous ne vendons jamais vos données à des tiers.</p>
-              </section>
-
-              <section className="space-y-2">
-                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">3. Sécurité</h4>
-                <p>Nous utilisons des protocoles de chiffrement standards (SSL/TLS) pour la transmission de vos données vers nos serveurs sécurisés gérés par Supabase.</p>
-              </section>
-
-              <section className="space-y-2">
-                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">4. Vos droits</h4>
-                <p>Conformément à la réglementation (RGPD et loi togolaise), vous disposez d'un droit d'accès, de rectification et de suppression de vos données via les paramètres de l'application.</p>
-              </section>
-
-              <p className="text-[11px] text-slate-400 italic">En utilisant Nye Cyclea, vous acceptez que vos données soient traitées conformément à cette politique.</p>
+              <PrivacyPolicyContent />
             </div>
             <div className="p-4 border-t border-pink-50 bg-white text-center">
               <button
