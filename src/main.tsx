@@ -4,13 +4,18 @@ import { HashRouter } from 'react-router-dom';
 import './index.css';
 import { NotificationService } from './services/notificationService';
 import { registerSW } from 'virtual:pwa-register';
+import { toast } from 'sonner';
 
 // Register Service Worker with automatic updates
 registerSW({
   onNeedRefresh() {
-    if (confirm('Une nouvelle version est disponible. Voulez-vous mettre à jour ?')) {
-      window.location.reload();
-    }
+    toast('🆕 Une nouvelle version est disponible !', {
+      action: {
+        label: 'Mettre à jour',
+        onClick: () => window.location.reload(),
+      },
+      duration: Infinity,
+    });
   },
   onOfflineReady() {
     console.log('L\'application est prête pour le mode hors-ligne.');

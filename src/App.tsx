@@ -7,6 +7,7 @@ import { SubscriptionService } from './services/subscriptionService';
 import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster, toast } from 'sonner';
+import { ConfirmDialog } from './components/ConfirmDialog';
 
 // Lazy loaded components
 const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -32,6 +33,7 @@ export default function App() {
   const [authData, setAuthData] = useState<AuthData | null>(null);
   const [showAddCycle, setShowAddCycle] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,16 +71,19 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = async () => {
-    if (confirm('Êtes-vous sûre de vouloir vous déconnecter ?')) {
-      await supabase.auth.signOut();
-      StorageService.clearAuth();
-      setIsAuthenticated(false);
-      setAuthData(null);
-      setIsPremium(false);
-      toast.success('Déconnexion réussie');
-      navigate('/');
-    }
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    await supabase.auth.signOut();
+    StorageService.clearAuth();
+    setIsAuthenticated(false);
+    setAuthData(null);
+    setIsPremium(false);
+    toast.success('Déconnexion réussie ✓');
+    navigate('/');
   };
 
   // Show loading spinner while IndexedDB initializes (important on iOS)
@@ -112,6 +117,18 @@ export default function App() {
 
         {/* Add Cycle Modal */}
         {showAddCycle && <AddCycle onClose={() => setShowAddCycle(false)} />}
+
+        {/* Logout Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={showLogoutConfirm}
+          title="Se déconnecter ?"
+          message="Vous allez être déconnectée. Vos données locales restent sur cet appareil."
+          confirmLabel="Se déconnecter"
+          cancelLabel="Rester connectée"
+          variant="warning"
+          onConfirm={handleConfirmLogout}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
       </Suspense>
     </ErrorBoundary>
   );

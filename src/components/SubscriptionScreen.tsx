@@ -1,219 +1,422 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Sparkles, Shield, Lock, FileText, Zap, Loader2 } from 'lucide-react';
+import { 
+  ArrowLeft, Check, X, FileText, 
+  Loader2, Zap, Heart, Star, ChevronRight,
+  Lock, Sparkles
+} from 'lucide-react';
 import { StorageService } from '../services/storageService';
+import { toast } from 'sonner';
 
 export function SubscriptionScreen() {
   const navigate = useNavigate();
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-
-  const plans = [
-    {
-      id: 'monthly',
-      name: 'Abonnement Mensuel',
-      price: '500 FCFA',
-      period: 'par mois',
-      description: 'Accès complet aux fonctions Pro',
-      features: [
-        'Rapports PDF illimités',
-        'IA Intelligente (Bientôt)',
-        'Sauvegarde & Exportation',
-        'Historique illimité',
-        'Zéro publicité',
-      ],
-      btnText: "S'abonner au mois",
-      primaryColor: '#f472b6', // pink-400
-      secondaryColor: '#fdf2f8', // pink-50
-    },
-    {
-      id: 'yearly',
-      name: 'Abonnement Annuel',
-      price: '5 000 FCFA',
-      period: 'par an',
-      description: 'Le meilleur rapport qualité/prix',
-      features: [
-        'Économisez 1 000 FCFA',
-        'Rapports PDF illimités',
-        'IA Intelligente (Bientôt)',
-        'Sauvegarde & Exportation',
-        'Historique illimité',
-        'Support prioritaire',
-      ],
-      btnText: "S'abonner à l'année",
-      primaryColor: '#fb7185', // rose-400
-      secondaryColor: '#fff1f2', // rose-50
-      isPopular: true,
-    },
-  ];
 
   const auth = StorageService.getAuth();
 
+  const handleBack = () => {
+    navigate('/settings');
+  };
+
   const handleSubscribe = async (planId: string) => {
     if (!auth) {
-      alert('Veuillez vous connecter pour vous abonner.');
+      toast.error('Veuillez vous connecter pour vous abonner.');
       navigate('/auth');
       return;
     }
 
     try {
       setLoadingPlan(planId);
-
-      alert(`Le paiement est temporairement désactivé.\n\nPlan sélectionné : ${planId}`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      toast.info(`Paiement bientôt disponible ! Plan : ${planId === 'monthly' ? 'Mensuel' : 'Annuel'}`);
     } catch (error: any) {
-      console.error('Erreur lors du paiement:', error);
-      alert(`Erreur lors du paiement: ${error.message}`);
+      console.error('Error:', error);
+      toast.error('Une erreur est survenue.');
     } finally {
       setLoadingPlan(null);
     }
   };
 
+  const premiumFeatures = [
+    { label: 'IA Prédictive avancée', icon: Zap },
+    { label: 'Rapports PDF illimités', icon: FileText },
+    { label: 'Analyses de fertilité', icon: Heart },
+    { label: 'Interface sans publicité', icon: Star },
+  ];
+
+  const comparisonData = [
+    { label: 'Suivi des cycles', free: true, premium: true },
+    { label: 'Calendrier prévisionnel', free: true, premium: true },
+    { label: 'Rapports PDF Santé', free: false, premium: true },
+    { label: 'IA Prédictive experte', free: false, premium: true },
+    { label: 'Analyses de fertilité', free: false, premium: true },
+    { label: 'Zéro Publicité', free: false, premium: true },
+  ];
+
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 animate-in fade-in duration-500">
-      {/* Header / Navbar */}
-      <div className="bg-white border-b border-slate-100 sticky top-0 z-50">
-        <div className="max-w-xl mx-auto px-4 py-4 flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-slate-50 rounded-xl transition-all active:scale-90"
+    <div className="sub-container">
+      <style>{`
+        .sub-container {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #fff5f7 0%, #fdf2f8 100%);
+          font-family: 'Poppins', sans-serif;
+          color: #18181b;
+          padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .back-nav {
+          width: 100%;
+          max-width: 450px;
+          margin-bottom: 1rem;
+          position: relative;
+          z-index: 50;
+        }
+
+        .back-circle {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: white;
+          border: 1px solid #fee2e2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #f43f5e;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(244, 63, 94, 0.08);
+        }
+
+        .app-logo {
+          width: 80px;
+          height: 80px;
+          border-radius: 22px;
+          box-shadow: 0 10px 25px rgba(244, 63, 94, 0.15);
+          margin-bottom: 1rem;
+        }
+
+        .title-h1 {
+          font-size: 1.4rem;
+          font-weight: 900;
+          text-align: center;
+          margin-bottom: 1.5rem;
+          letter-spacing: -0.02em;
+          line-height: 1.3;
+        }
+
+        .title-h1 span {
+          color: #f43f5e;
+        }
+
+        .premium-card {
+          width: 100%;
+          max-width: 400px;
+          background: white;
+          border-radius: 32px;
+          padding: 2.5rem 2rem;
+          box-shadow: 0 25px 50px -12px rgba(244, 63, 94, 0.1);
+          border: 1px solid rgba(254, 226, 226, 0.8);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-bottom: 2.5rem;
+          position: relative;
+        }
+
+        .billing-selector {
+          background: #f4f4f5;
+          padding: 4px;
+          border-radius: 100px;
+          display: flex;
+          gap: 4px;
+          margin-bottom: 2.5rem;
+        }
+
+        .billing-btn {
+          padding: 10px 20px;
+          border-radius: 100px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          border: none;
+          background: transparent;
+          color: #71717a;
+          cursor: pointer;
+          transition: all 0.3s;
+          position: relative;
+        }
+
+        .billing-btn.active {
+          background: white;
+          color: #18181b;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .discount-badge {
+          position: absolute;
+          top: -12px;
+          right: -10px;
+          background: #f43f5e;
+          color: white;
+          font-size: 0.6rem;
+          padding: 2px 8px;
+          border-radius: 999px;
+          font-weight: 800;
+          border: 2px solid white;
+          box-shadow: 0 4px 8px rgba(244, 63, 94, 0.2);
+        }
+
+        .price-display {
+          text-align: center;
+          margin-bottom: 2.5rem;
+        }
+
+        .price-amount {
+          font-size: 3.5rem;
+          font-weight: 900;
+          color: #f43f5e;
+          line-height: 1;
+        }
+
+        .price-currency {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #f43f5e;
+          margin-left: 4px;
+          opacity: 0.8;
+        }
+
+        .price-info {
+          display: block;
+          margin-top: 0.75rem;
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: #71717a;
+        }
+
+        .features-list {
+          width: 100%;
+          border-top: 1px solid #f4f4f5;
+          padding: 1.5rem 0;
+          margin-bottom: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .feature-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .feature-icon-box {
+          width: 20px;
+          height: 20px;
+          color: #f43f5e;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .feature-label {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #3f3f46;
+        }
+
+        .cta-btn {
+          width: 100%;
+          padding: 1.25rem;
+          background: linear-gradient(to right, #f43f5e, #e11d48);
+          color: white;
+          border: none;
+          border-radius: 20px;
+          font-size: 1.1rem;
+          font-weight: 800;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: all 0.3s;
+          box-shadow: 0 10px 20px rgba(244, 63, 94, 0.25);
+        }
+
+        .cta-btn:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 30px rgba(244, 63, 94, 0.3);
+          filter: brightness(1.1);
+        }
+
+        .cta-btn:active {
+          transform: translateY(0);
+        }
+
+        .comparison-box {
+          width: 100%;
+          max-width: 400px;
+          background: rgba(255, 255, 255, 0.6);
+          backdrop-filter: blur(10px);
+          border-radius: 28px;
+          padding: 1.5rem;
+          border: 1px solid rgba(254, 226, 226, 0.8);
+          margin-bottom: 2rem;
+        }
+
+        .comp-title {
+          font-size: 0.8rem;
+          font-weight: 800;
+          text-align: center;
+          margin-bottom: 1.5rem;
+          color: #a1a1aa;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+        }
+
+        .comp-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.8rem 0;
+          border-bottom: 1px solid rgba(254, 226, 226, 0.4);
+        }
+
+        .comp-row:last-child {
+          border-bottom: none;
+        }
+
+        .comp-label {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #52525b;
+        }
+
+        .comp-values {
+          display: flex;
+          gap: 2rem;
+          align-items: center;
+        }
+
+        .comp-val {
+          width: 24px;
+          display: flex;
+          justify-content: center;
+        }
+
+        .trust-footer {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.7rem;
+          color: #a1a1aa;
+          font-weight: 600;
+          margin-bottom: 2rem;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
+
+      <nav className="back-nav">
+        <button className="back-circle" onClick={handleBack}>
+          <ArrowLeft size={20} />
+        </button>
+      </nav>
+
+      <img src="/icons/pwa-192x192.png" alt="Logo" className="app-logo" />
+
+      <h1 className="title-h1">Choisissez votre plan<br/><span>Nye Cyclea Premium</span></h1>
+
+      <div className="premium-card">
+        <div className="billing-selector">
+          <button 
+            className={`billing-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
+            onClick={() => setBillingCycle('monthly')}
           >
-            <ArrowLeft className="w-6 h-6 text-slate-600" />
+            Mensuel
           </button>
-          <div className="flex items-center gap-2">
-            <img src="/icons/pwa-192x192.png" alt="Logo" className="w-8 h-8 object-contain" />
-            <span
-              className="text-xl text-pink-600 font-bold"
-              style={{ fontFamily: 'var(--font-brand)' }}
-            >
-              Nye Cyclea Pro
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-xl mx-auto px-6 py-10">
-        {/* Intro Section */}
-        <div className="text-center mb-10 space-y-4">
-          <h2 className="text-3xl font-extrabold text-slate-900 leading-tight">
-            Passez à la version <span className="text-pink-600">Nye Cyclea Pro</span>
-          </h2>
-          <p className="text-slate-500 text-sm leading-relaxed max-w-[320px] mx-auto">
-            Débloquez les rapports PDF et les fonctions avancées pour un suivi serein.
-          </p>
+          <button 
+            className={`billing-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
+            onClick={() => setBillingCycle('yearly')}
+          >
+            Annuel
+            <span className="discount-badge">-25%</span>
+          </button>
         </div>
 
-        {/* Vertical Rectangle Cards */}
-        <div className="space-y-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className="relative flex flex-col bg-white border-2 rounded-2xl overflow-hidden shadow-sm transition-transform active:scale-[0.99]"
-              style={{ borderColor: plan.primaryColor }}
-            >
-              {plan.isPopular && (
-                <div
-                  className="absolute top-0 right-0 px-4 py-1 text-[10px] font-black uppercase text-white tracking-widest"
-                  style={{ backgroundColor: plan.primaryColor }}
-                >
-                  Populaire
-                </div>
-              )}
+        <div className="price-display">
+          <span className="price-amount">
+            {billingCycle === 'yearly' ? '5 000' : '500'}
+          </span>
+          <span className="price-currency">FCFA</span>
+          <span className="price-info">
+            {billingCycle === 'yearly' ? 'Soit environ 417 FCFA par mois' : 'Paiement mensuel sans engagement'}
+          </span>
+        </div>
 
-              <div className="p-6 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-extrabold text-slate-800 uppercase tracking-tight">
-                      {plan.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 font-medium">{plan.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-black text-slate-900">{plan.price}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {plan.period}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-8">
-                  {plan.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
-                      <div
-                        className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: plan.secondaryColor }}
-                      >
-                        <Check
-                          className="w-3 h-3"
-                          style={{ color: plan.primaryColor }}
-                          strokeWidth={3}
-                        />
-                      </div>
-                      <span className="text-sm font-semibold text-slate-600">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => handleSubscribe(plan.id)}
-                  disabled={loadingPlan !== null}
-                  className="w-full py-4 rounded-xl text-white font-bold text-base transition-all hover:brightness-110 active:scale-95 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: plan.primaryColor }}
-                >
-                  {loadingPlan === plan.id ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Chargement...
-                    </>
-                  ) : (
-                    plan.btnText
-                  )}
-                </button>
+        <div className="features-list">
+          {premiumFeatures.map((feature, i) => (
+            <div key={i} className="feature-item">
+              <div className="feature-icon-box">
+                <Check size={18} strokeWidth={3} />
               </div>
+              <span className="feature-label">{feature.label}</span>
             </div>
           ))}
         </div>
 
-        {/* Trust Badges Bar */}
-        <div className="mt-12 p-6 bg-slate-50 rounded-2xl flex justify-between items-center text-center">
-          <div className="flex flex-col items-center gap-1">
-            <Shield className="w-5 h-5 text-emerald-500" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-              Sécurisé
-            </span>
-          </div>
-          <div className="w-px h-8 bg-slate-200" />
-          <div className="flex flex-col items-center gap-1">
-            <Lock className="w-5 h-5 text-pink-500" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-              Confidentialité
-            </span>
-          </div>
-          <div className="w-px h-8 bg-slate-200" />
-          <div className="flex flex-col items-center gap-1">
-            <FileText className="w-5 h-5 text-sky-500" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-              Rapports
-            </span>
-          </div>
-        </div>
+        <button 
+          className="cta-btn"
+          onClick={() => handleSubscribe(billingCycle)}
+          disabled={loadingPlan !== null}
+        >
+          {loadingPlan ? (
+            <Loader2 size={24} className="animate-spin" />
+          ) : (
+            <>
+              Commencer l'essai
+              <ChevronRight size={22} />
+            </>
+          )}
+        </button>
+      </div>
 
-        {/* Bottom Links */}
-        <div className="mt-12 text-center space-y-4">
-          <p className="text-[10px] text-slate-300 font-medium px-6 leading-relaxed">
-            Nye Cyclea Pro est un projet indépendant. Votre abonnement nous aide à rester sans
-            publicité et à protéger vos données.
-          </p>
-          <div className="flex items-center justify-center gap-6">
-            <button className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-pink-600 transition-colors">
-              CGV/CGU
-            </button>
-            <button
-              onClick={() => navigate('/settings')}
-              className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-pink-600 transition-colors"
-            >
-              Vie Privée
-            </button>
+      <div className="comparison-box">
+        <h3 className="comp-title">Gratuit vs Premium</h3>
+        <div className="comp-row" style={{ borderBottom: '2px solid rgba(244, 63, 94, 0.1)' }}>
+          <span className="comp-label" style={{ opacity: 0 }}>Feature</span>
+          <div className="comp-values">
+            <span className="comp-label" style={{ width: '24px', textAlign: 'center', fontSize: '0.65rem' }}>Gratuit</span>
+            <span className="comp-label" style={{ width: '24px', textAlign: 'center', fontSize: '0.65rem', color: '#f43f5e' }}>Pro</span>
           </div>
         </div>
+        {comparisonData.map((row, i) => (
+          <div key={i} className="comp-row">
+            <span className="comp-label">{row.label}</span>
+            <div className="comp-values">
+              <div className="comp-val">
+                {row.free ? <Check size={16} color="#d4d4d8" /> : <X size={16} color="#f4f4f5" />}
+              </div>
+              <div className="comp-val">
+                <Check size={18} color="#f43f5e" strokeWidth={3} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="trust-footer">
+        <Lock size={12} />
+        Paiement sécurisé via Mobile Money
       </div>
     </div>
   );

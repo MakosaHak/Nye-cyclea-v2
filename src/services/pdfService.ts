@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { CycleEntry } from '../types';
 import { StorageService } from './storageService';
 import { PredictionService } from './predictionService';
+import { toast } from 'sonner';
 
 export class PDFService {
   /**
@@ -81,7 +82,7 @@ export class PDFService {
       // --- 1. HEADER (EDITORIAL STYLE) ---
       try {
         doc.addImage('/icons/pwa-192x192.png', 'PNG', margin, 12, 12, 12);
-      } catch (e) {}
+      } catch (e) { }
 
       useSerif(22, theme.primary, 'bold');
       doc.text('Nye Cyclea', margin + 16, 21);
@@ -269,7 +270,7 @@ export class PDFService {
       doc.save(finalName);
     } catch (error) {
       console.error('Fatal PDF Error:', error);
-      alert('Une erreur est survenue lors de la création du PDF.');
+      toast.error('Impossible de générer le PDF. Veuillez réessayer.');
     }
   }
 }

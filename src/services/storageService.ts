@@ -161,16 +161,18 @@ export class StorageService {
     }
 
     // Fallback to localStorage if not in cache or if init failed
-    const data = localStorage.getItem('menstrual_app_auth');
-    if (data) {
-      try {
-        const auth = JSON.parse(data);
-        if (!cache.auth) {
-          cache.auth = auth;
+    if (typeof localStorage !== 'undefined') {
+      const data = localStorage.getItem('menstrual_app_auth');
+      if (data) {
+        try {
+          const auth = JSON.parse(data);
+          if (!cache.auth) {
+            cache.auth = auth;
+          }
+          return auth;
+        } catch (e) {
+          return null;
         }
-        return auth;
-      } catch (e) {
-        return null;
       }
     }
     return null;
@@ -179,7 +181,9 @@ export class StorageService {
   static async setAuth(auth: AuthData): Promise<void> {
     cache.auth = auth;
     // Save to localStorage first (sync backup)
-    localStorage.setItem('menstrual_app_auth', JSON.stringify(auth));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('menstrual_app_auth', JSON.stringify(auth));
+    }
     // Save to IndexedDB asynchronously
     await saveToIndexedDB(STORES.AUTH, 'current', auth);
   }
@@ -188,20 +192,22 @@ export class StorageService {
     try {
       console.log('clearAuth: Starting to clear auth');
       cache.auth = null;
-      localStorage.removeItem('menstrual_app_auth');
-      console.log('clearAuth: localStorage cleared');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('menstrual_app_auth');
+        console.log('clearAuth: localStorage cleared');
+      }
 
       // Nettoyer IndexedDB de manière asynchrone sans bloquer
       deleteFromIndexedDB(STORES.AUTH, 'current').catch((error) => {
         console.error('Error clearing auth from IndexedDB:', error);
-        // Ne pas bloquer même si IndexedDB échoue, localStorage est déjà nettoyé
       });
 
       console.log('clearAuth: Auth cleared successfully');
     } catch (error) {
       console.error('Error in clearAuth:', error);
-      // S'assurer que localStorage est nettoyé même en cas d'erreur
-      localStorage.removeItem('menstrual_app_auth');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('menstrual_app_auth');
+      }
       throw error;
     }
   }

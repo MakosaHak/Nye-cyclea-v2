@@ -7,12 +7,14 @@ import { CycleEntry } from '../types';
 import { PDFService } from '../services/pdfService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { toast } from 'sonner';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export function CycleHistory() {
   const navigate = useNavigate();
   const [cycles, setCycles] = useState<CycleEntry[]>([]);
   const [sortedCycles, setSortedCycles] = useState<CycleEntry[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cycleToDelete, setCycleToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadCycles();
@@ -22,11 +24,8 @@ export function CycleHistory() {
       setRefreshKey((prev) => prev + 1);
     };
     window.addEventListener('storage', handleStorageChange);
-    // Also check periodically (every 2 seconds) for settings changes
-    const interval = setInterval(handleStorageChange, 2000);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
 
@@ -39,12 +38,16 @@ export function CycleHistory() {
     setSortedCycles(sorted);
   };
 
-  const handleDelete = async (cycleId: string) => {
-    if (confirm('Êtes-vous sûre de vouloir supprimer ce cycle ?')) {
-      await StorageService.deleteCycle(cycleId);
-      toast.success('Cycle supprimé avec succès');
-      loadCycles();
-    }
+  const handleDelete = (cycleId: string) => {
+    setCycleToDelete(cycleId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!cycleToDelete) return;
+    await StorageService.deleteCycle(cycleToDelete);
+    toast.success('Cycle supprimé avec succès');
+    loadCycles();
+    setCycleToDelete(null);
   };
 
   const formatDate = (dateStr: string) => {
@@ -100,7 +103,7 @@ export function CycleHistory() {
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <>
       {/* Statistics */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <h2 className="text-gray-800 mb-4 font-bold text-xl">Statistiques</h2>
@@ -282,6 +285,17 @@ export function CycleHistory() {
           );
         })}
       </div>
-    </div>
+
+      <ConfirmDialog
+        isOpen={cycleToDelete !== null}
+        title="Supprimer ce cycle ?"
+        message="Cette action est irréversible. Le cycle sera définitivement supprimé de votre historique."
+        confirmLabel="Oui, supprimer"
+        cancelLabel="Annuler"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setCycleToDelete(null)}
+      />
+    </>
   );
 }

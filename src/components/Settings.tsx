@@ -10,131 +10,98 @@ import { SettingsAccountSection } from './SettingsAccountSection';
 import { SettingsCycleSection } from './SettingsCycleSection';
 import { SettingsBackupSection } from './SettingsBackupSection';
 import { SettingsNotificationsSection } from './SettingsNotificationsSection';
+import { ConfirmDialog } from './ConfirmDialog';
 
-// ─── Privacy Policy Accordion Content ────────────────────────────────────────
+// ─── Privacy Policy Content (Refined & Legal) ────────────────────────────────
 
 function PrivacyPolicyContent() {
   return (
     <div
-      className="border-t border-pink-100/60 animate-in slide-in-from-top-2 fade-in duration-300"
-      style={{ fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: '1.8' }}
+      className="mt-6 border-t border-gray-100 pt-8 pb-4 animate-in fade-in slide-in-from-top-4 duration-700"
+      style={{ 
+        fontFamily: "'DM Sans', sans-serif", 
+        lineHeight: '1.6',
+        color: '#4B5563'
+      }}
     >
-      <div className="px-6 pt-5 pb-8 space-y-6">
-
-        {/* Title Block */}
-        <div className="text-center pb-5 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight mb-1">Nye Cyclea</h1>
-          <p className="text-xs text-gray-500 italic">Application de suivi du cycle menstruel</p>
-          <p className="text-[11px] text-gray-400 mt-2">
-            Version : 1.0 &nbsp;|&nbsp; En vigueur depuis le 13 janvier 2026
-          </p>
+      <div className="space-y-10">
+        {/* Document Header */}
+        <div className="text-center pb-8 border-b border-gray-100">
+          <h1 className="text-xl font-extrabold text-gray-900 tracking-tight mb-2">Politique de Confidentialité</h1>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Cadre Juridique Togo & International</p>
+          <p className="text-[11px] text-gray-500 mt-2 font-medium">Dernière mise à jour : 10 mai 2026</p>
         </div>
 
-        {/* Préambule */}
+        {/* Section 1: Legal Framework */}
         <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight uppercase">Préambule</h2>
-          <p className="text-sm text-gray-600">
-            La présente Politique de Confidentialité décrit la manière dont <strong>Nye Cyclea</strong> collecte, utilise et protège les informations personnelles de ses utilisatrices, conformément à la loi togolaise n°2019-014 relative à la protection des données personnelles et aux recommandations de l'IPDCP.
+          <h2 className="text-[13px] font-black text-gray-900 mb-3 uppercase tracking-wider border-l-4 border-pink-500 pl-3">
+            01. Cadre Légal et Conformité
+          </h2>
+          <p className="text-sm text-justify">
+            La présente politique est régie par la <strong>Loi n°2019-014</strong> du 29 octobre 2019 relative à la protection des données à caractère personnel en République Togolaise. Nye Cyclea s'engage à respecter les principes de protection édictés par l'Instance de Protection des Données à Caractère Personnel (IPDCP). 
+          </p>
+          <p className="text-sm mt-3 text-justify">
+            Par souci de transparence et de sécurité universelle, nos protocoles sont également alignés sur les standards internationaux, notamment le <strong>Règlement Général sur la Protection des Données (RGPD)</strong> de l'Union Européenne, garantissant ainsi un niveau de protection optimal pour toutes nos utilisatrices.
           </p>
         </section>
 
-        {/* 1 */}
+        {/* Section 2: Data Nature */}
         <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">1. Responsable du traitement</h2>
-          <p className="text-sm text-gray-600">
-            Le responsable du traitement est l'équipe <strong>Nye Cyclea</strong>.<br />
-            Contact : <span className="text-pink-600 font-medium">contact@nyecyclea.com</span>
+          <h2 className="text-[13px] font-black text-gray-900 mb-3 uppercase tracking-wider border-l-4 border-pink-500 pl-3">
+            02. Nature des Données et Finalités
+          </h2>
+          <p className="text-sm mb-4 text-justify">
+            Nye Cyclea traite deux types de données distincts pour assurer le bon fonctionnement du service :
           </p>
-        </section>
-
-        {/* 2 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">2. Données collectées</h2>
-          <p className="text-sm text-gray-600 mb-2">Les données suivantes peuvent être collectées, uniquement si vous les saisissez :</p>
-          <div className="bg-pink-50/50 rounded-xl p-3.5 text-sm text-gray-600 space-y-1">
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Dates de début et de fin des règles</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Durée habituelle du cycle</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Identifiant de compte (pseudonyme)</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Statut d'abonnement (Gratuit / Premium)</span></div>
+          <div className="grid gap-4">
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <h3 className="text-xs font-bold text-gray-800 uppercase mb-2">Données de Santé (Sensibles)</h3>
+              <p className="text-xs leading-relaxed">
+                Dates de cycles, symptômes et notes personnelles. Ces données sont <strong>exclusivement stockées en local</strong> sur votre terminal (Architecture Offline-First) et ne sont jamais transmises à nos serveurs.
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <h3 className="text-xs font-bold text-gray-800 uppercase mb-2">Données de Compte</h3>
+              <p className="text-xs leading-relaxed">
+                Identifiant, mot de passe (haché) et statut d'abonnement. Ces informations sont nécessaires pour la gestion de votre profil et sont hébergées sur des serveurs sécurisés bénéficiant d'un chiffrement TLS de bout en bout.
+              </p>
+            </div>
           </div>
-          <p className="text-[11px] text-gray-400 italic mt-2">Toutes les données de santé sont facultatives et ne quittent jamais votre appareil.</p>
         </section>
 
-        {/* 3 */}
+        {/* Section 3: User Rights */}
         <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">3. Base légale du traitement</h2>
-          <p className="text-sm text-gray-600">
-            Le traitement repose sur votre <strong>consentement explicite</strong> donné lors de l'utilisation de l'application. Vous pouvez le retirer à tout moment en supprimant vos données ou en désinstallant l'application.
+          <h2 className="text-[13px] font-black text-gray-900 mb-3 uppercase tracking-wider border-l-4 border-pink-500 pl-3">
+            03. Droits de l'Utilisatrice
+          </h2>
+          <p className="text-sm mb-4 text-justify">
+            Conformément à la législation togolaise et aux principes du RGPD, vous disposez des droits fondamentaux suivants :
+          </p>
+          <ul className="space-y-2 text-sm">
+            <li className="flex gap-3"><span className="font-bold text-pink-500">•</span> <strong>Droit d'accès :</strong> Consulter l'intégralité de vos données à tout moment.</li>
+            <li className="flex gap-3"><span className="font-bold text-pink-500">•</span> <strong>Droit de rectification :</strong> Modifier vos informations personnelles.</li>
+            <li className="flex gap-3"><span className="font-bold text-pink-500">•</span> <strong>Droit à l'effacement :</strong> Supprimer définitivement vos données (via le bouton "Supprimer mes données" ci-dessous).</li>
+            <li className="flex gap-3"><span className="font-bold text-pink-500">•</span> <strong>Droit à la portabilité :</strong> Exporter vos données dans un format structuré (JSON).</li>
+          </ul>
+        </section>
+
+        {/* Section 4: Security */}
+        <section>
+          <h2 className="text-[13px] font-black text-gray-900 mb-3 uppercase tracking-wider border-l-4 border-pink-500 pl-3">
+            04. Sécurité et Intégrité
+          </h2>
+          <p className="text-sm text-justify">
+            Nous mettons en œuvre des mesures techniques de pointe (chiffrement, isolation des processus) pour garantir l'intégrité de vos informations. En tant qu'utilisatrice, vous êtes responsable de la sécurité physique de votre terminal et de la confidentialité de vos identifiants.
           </p>
         </section>
 
-        {/* 4 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">4. Finalité du traitement</h2>
-          <p className="text-sm text-gray-600 mb-2">Vos données sont utilisées exclusivement pour :</p>
-          <div className="bg-pink-50/50 rounded-xl p-3.5 text-sm text-gray-600 space-y-1">
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Calculer et afficher vos prédictions de cycle</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Personnaliser votre expérience dans l'application</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span>Gérer votre accès aux fonctionnalités Premium</span></div>
-          </div>
-          <p className="text-[11px] text-rose-500 font-semibold mt-2">Vos données ne sont jamais vendues, cédées ou partagées à des fins commerciales.</p>
-        </section>
-
-        {/* 5 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">5. Stockage et localisation</h2>
-          <p className="text-sm text-gray-600 mb-1.5">
-            Nye Cyclea applique une architecture <strong>Offline-First</strong> : toutes vos données de santé sont stockées <strong>localement sur votre appareil</strong>, sans synchronisation cloud.
+        {/* Final Disclaimer */}
+        <div className="pt-10 border-t border-gray-100 text-center">
+          <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest leading-relaxed">
+            Votre intimité est notre priorité absolue.<br />
+            Pour toute demande : contact@nyecyclea.com
           </p>
-          <p className="text-sm text-gray-600">
-            Seules les données de compte sont hébergées sur des serveurs sécurisés (<strong>Supabase</strong>), protégés par chiffrement TLS.
-          </p>
-        </section>
-
-        {/* 6 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">6. Durée de conservation</h2>
-          <p className="text-sm text-gray-600">
-            Les données de santé sont conservées jusqu'à ce que vous les supprimiez dans les Paramètres. Les données de compte sont supprimées définitivement sur demande.
-          </p>
-        </section>
-
-        {/* 7 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">7. Sécurité des données</h2>
-          <p className="text-sm text-gray-600">
-            Des mesures techniques et organisationnelles adaptées protègent vos données contre tout accès non autorisé, perte ou altération. Nous vous recommandons également de sécuriser votre téléphone par un code PIN ou un verrou biométrique.
-          </p>
-        </section>
-
-        {/* 8 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">8. Vos droits</h2>
-          <p className="text-sm text-gray-600 mb-2">Conformément à la loi n°2019-014, vous disposez des droits suivants :</p>
-          <div className="bg-pink-50/50 rounded-xl p-3.5 text-sm text-gray-600 space-y-1">
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span><strong>Accès</strong> : consulter les données vous concernant</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span><strong>Rectification</strong> : modifier vos données</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span><strong>Effacement</strong> : supprimer toutes vos données</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span><strong>Portabilité</strong> : exporter vos données (format JSON)</span></div>
-            <div className="flex gap-2"><span className="text-pink-400 font-bold flex-shrink-0">—</span><span><strong>Opposition</strong> : cesser l'utilisation à tout moment</span></div>
-          </div>
-          <p className="text-[11px] text-gray-400 italic mt-2">Pour exercer vos droits : contact@nyecyclea.com</p>
-        </section>
-
-        {/* 9 */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-800 mb-1.5 tracking-tight">9. Mises à jour</h2>
-          <p className="text-sm text-gray-600">
-            Cette politique peut évoluer. Toute modification significative sera notifiée dans l'application.
-          </p>
-        </section>
-
-        {/* Footer */}
-        <div className="text-center pt-5 border-t border-gray-100">
-          <p className="text-xs font-semibold text-gray-600">Nye Cyclea — Un espace sûr, intime et respectueux.</p>
-          <p className="text-[10px] uppercase tracking-widest text-pink-400 font-bold mt-1">Votre corps. Vos données. Votre choix.</p>
         </div>
-
       </div>
     </div>
   );
@@ -151,6 +118,7 @@ export function Settings({ onLogout }: SettingsProps) {
   const [settings, setSettings] = useState<UserSettings>(StorageService.getDefaultSettings());
   const [isPolicyOpen, setIsPolicyOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const auth = StorageService.getAuth();
   const isPremium = SubscriptionService.isPremium(auth?.subscriptionType);
@@ -193,11 +161,12 @@ export function Settings({ onLogout }: SettingsProps) {
     await StorageService.saveSettings(updatedSettings);
   };
 
-  const handleDeleteAllData = async () => {
-    const firstConfirm = confirm('ATTENTION : Cette action supprimera TOUTES vos données de manière irréversible. Êtes-vous absolument sûre ?');
-    if (!firstConfirm) return;
-    const secondConfirm = confirm('Dernière confirmation : voulez-vous vraiment supprimer toutes vos données ?');
-    if (!secondConfirm) return;
+  const handleDeleteAllData = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    setShowDeleteConfirm(false);
     await StorageService.clearAllData();
     toast.success('Toutes vos données ont été supprimées');
     setTimeout(() => window.location.reload(), 1500);
@@ -226,6 +195,24 @@ export function Settings({ onLogout }: SettingsProps) {
           settings={settings}
           onSettingChange={(key, value) => handleSettingChange(key, value)}
         />
+
+        {/* Privacy Policy Integrated Section */}
+        <div className="mb-6 pb-6 border-b border-gray-200">
+          <button 
+            onClick={() => setIsPolicyOpen(!isPolicyOpen)}
+            className="w-full flex items-center justify-between group py-2"
+          >
+            <div className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-gray-600" />
+              <h3 className="text-gray-700 font-semibold text-lg">Politique de confidentialité</h3>
+            </div>
+            <ChevronDown 
+              className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isPolicyOpen ? 'rotate-180' : ''}`} 
+            />
+          </button>
+          
+          {isPolicyOpen && <PrivacyPolicyContent />}
+        </div>
 
         {/* Delete data */}
         <div className="mb-6 pb-6 border-b border-gray-200">
@@ -257,46 +244,16 @@ export function Settings({ onLogout }: SettingsProps) {
         </button>
       </div>
 
-      {/* Privacy Policy Accordion */}
-      <div
-        className="overflow-hidden rounded-3xl shadow-md border border-pink-100/60 transition-all duration-300"
-        style={{ background: 'linear-gradient(135deg, #fff8f9 0%, #fff0f3 100%)' }}
-      >
-        {/* Trigger */}
-        <button
-          onClick={() => setIsPolicyOpen((prev) => !prev)}
-          className="group w-full flex items-center justify-between gap-4 px-6 py-5 hover:bg-white/50 transition-all duration-300"
-          aria-expanded={isPolicyOpen}
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="p-3 rounded-2xl shadow-sm transition-all duration-300 group-hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #fda4af 0%, #f43f5e 100%)' }}
-            >
-              <Lock className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <p className="text-[10px] uppercase tracking-widest text-pink-400 font-bold mb-0.5">Légal</p>
-              <h4 className="text-gray-800 font-bold text-base leading-tight">Politique de confidentialité</h4>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {isPolicyOpen ? 'Cliquez pour refermer' : 'Cliquez pour consulter'}
-              </p>
-            </div>
-          </div>
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300"
-            style={{ background: isPolicyOpen ? 'rgba(244,63,94,0.1)' : 'rgba(253,164,175,0.2)' }}
-          >
-            <ChevronDown
-              className="w-4 h-4 text-pink-500 transition-transform duration-300"
-              style={{ transform: isPolicyOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-            />
-          </div>
-        </button>
-
-        {/* Accordion Content */}
-        {isPolicyOpen && <PrivacyPolicyContent />}
-      </div>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Supprimer toutes les données ?"
+        message="ATTENTION : Cette action supprimera définitivement TOUS vos cycles, paramètres et historique. Cette opération est irréversible."
+        confirmLabel="Oui, tout supprimer"
+        cancelLabel="Non, garder mes données"
+        variant="danger"
+        onConfirm={handleConfirmDeleteAll}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
