@@ -13,10 +13,19 @@ export function SettingsInstallSection({ isDetailsOpen, onDetailsToggle }: Setti
 
     const handleInstallApp = async () => {
         if (isInstallable) {
-            await installApp();
+            const success = await installApp();
+            if (success) {
+                toast.success('L\'installation a commencé !');
+            }
         } else {
+            // If not automatically installable (e.g. iOS or already stashed), show the manual guide
             onDetailsToggle(true);
-            toast.info('Installation manuelle requise sur cet appareil.');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+            if (isIOS) {
+                toast.info('Sur iPhone : cliquez sur "Partager" puis "Sur l\'écran d\'accueil"');
+            } else {
+                toast.info('Installation manuelle requise via le menu du navigateur.');
+            }
         }
     };
 

@@ -16,11 +16,16 @@ export function usePWAInstall() {
 
     useEffect(() => {
         // Check if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+            || (window.navigator as any).standalone 
+            || document.referrer.includes('android-app://');
+            
+        if (isStandalone) {
             setIsInstalled(true);
         }
 
         const handler = (e: Event) => {
+            console.log('[PWA] beforeinstallprompt event fired');
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
             // Stash the event so it can be triggered later.
@@ -31,6 +36,7 @@ export function usePWAInstall() {
         window.addEventListener('beforeinstallprompt', handler);
 
         const installedHandler = () => {
+            console.log('[PWA] appinstalled event fired');
             setIsInstalled(true);
             setIsInstallable(false);
             setInstallPrompt(null);
@@ -45,23 +51,29 @@ export function usePWAInstall() {
     }, []);
 
     const installApp = async () => {
-        if (!installPrompt) return;
-
-        // Show the install prompt
-        await installPrompt.prompt();
-
-        // Wait for the user to respond to the prompt
-        const { outcome } = await installPrompt.userChoice;
-
-        if (outcome === 'accepted') {
-            console.log('User accepted the PWA install');
-        } else {
-            console.log('User dismissed the PWA install');
+        if (!installPrompt) {
+            console.warn('[PWA] Install prompt not available');
+            return false;
         }
 
-        // We used the prompt, clear it
-        setInstallPrompt(null);
-        setIsInstallable(false);
+        try {
+            // Show the install prompt
+            await installPrompt.prompt();
+
+            // Wait for the user to respond to the prompt
+            const { outcome } = await installPrompt.userChoice;
+            console.log(`[PWA] User response to install prompt: ${outcome}`);
+
+            if (outcome === 'accepted') {
+                setInstallPrompt(null);
+                setIsInstallable(false);
+                return true;
+            }
+        } catch (error) {
+            console.error('[PWA] Installation failed:', error);
+        }
+        
+        return false;
     };
 
     return { isInstallable, isInstalled, installApp };
