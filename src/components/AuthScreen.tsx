@@ -14,7 +14,8 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [recoveryCode, setRecoveryCode] = useState('');
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,14 +27,19 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
       return;
     }
 
-    if (mode === 'signup' && password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
-      return;
-    }
-
-    if (mode === 'signup' && password.length < 6) {
-      setError('Le mot de passe doit faire au moins 6 caractères');
-      return;
+    if (mode === 'signup') {
+      if (password !== confirmPassword) {
+        setError('Les mots de passe ne correspondent pas');
+        return;
+      }
+      if (password.length < 6) {
+        setError('Le mot de passe doit faire au moins 6 caractères');
+        return;
+      }
+      if (!agreedToPrivacy) {
+        setError('Vous devez accepter la politique de confidentialité');
+        return;
+      }
     }
 
     // Sanitize username for email (remove spaces)
@@ -204,26 +210,50 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
             </div>
 
             {mode === 'signup' && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Confirmation
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full h-12 px-4 rounded-2xl border border-pink-200 bg-white text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-rose-100 focus:border-rose-400 transition"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    Confirmation
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-12 px-4 rounded-2xl border border-pink-200 bg-white text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-rose-100 focus:border-rose-400 transition"
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 py-2">
+                  <input
+                    type="checkbox"
+                    id="privacy"
+                    checked={agreedToPrivacy}
+                    onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-pink-300 text-rose-500 focus:ring-rose-200"
+                  />
+                  <label htmlFor="privacy" className="text-[11px] text-slate-600 leading-tight">
+                    J'accepte la{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivacyModal(true)}
+                      className="text-rose-500 font-bold hover:underline"
+                    >
+                      politique de confidentialité
+                    </button>{' '}
+                    et les conditions d'utilisation.
+                  </label>
+                </div>
+              </>
             )}
 
             <button
               type="submit"
-              className="w-full h-12 rounded-2xl text-white font-medium transition flex items-center justify-center gap-2"
+              disabled={mode === 'signup' && !agreedToPrivacy}
+              className={`w-full h-12 rounded-2xl text-white font-medium transition flex items-center justify-center gap-2 ${mode === 'signup' && !agreedToPrivacy ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               style={{
                 background: 'linear-gradient(90deg, #fb7185 0%, #f472b6 100%)',
-                boxShadow: '0 10px 22px rgba(244,114,182,0.22)',
+                boxShadow: mode === 'signup' && !agreedToPrivacy ? 'none' : '0 10px 22px rgba(244,114,182,0.22)',
               }}
             >
               <span>{mode === 'login' ? 'Se connecter' : "S'inscrire"}</span>
@@ -232,6 +262,59 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
           </form>
         ) : null}
       </div>
+
+      {/* Privacy Modal Overlay */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg max-h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-pink-100 animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-pink-50 bg-pink-50/30 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-900">Politique de confidentialité</h3>
+              <button 
+                onClick={() => setShowPrivacyModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-400 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto text-sm text-slate-600 space-y-4">
+              <p className="font-semibold text-rose-500">Dernière mise à jour : 25 février 2026</p>
+              
+              <section className="space-y-2">
+                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">1. Collecte des données</h4>
+                <p>Nye Cyclea collecte vos données de cycle (dates de règles, symptômes) pour fournir des prévisions. Ces données sont stockées localement sur votre appareil et synchronisées de manière sécurisée si vous créez un compte.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">2. Utilisation</h4>
+                <p>Vos informations sont utilisées exclusivement pour le calcul de votre cycle menstruel et l'envoi de notifications de rappel. Nous ne vendons jamais vos données à des tiers.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">3. Sécurité</h4>
+                <p>Nous utilisons des protocoles de chiffrement standards (SSL/TLS) pour la transmission de vos données vers nos serveurs sécurisés gérés par Supabase.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">4. Vos droits</h4>
+                <p>Conformément à la réglementation (RGPD et loi togolaise), vous disposez d'un droit d'accès, de rectification et de suppression de vos données via les paramètres de l'application.</p>
+              </section>
+
+              <p className="text-[11px] text-slate-400 italic">En utilisant Nye Cyclea, vous acceptez que vos données soient traitées conformément à cette politique.</p>
+            </div>
+            <div className="p-4 border-t border-pink-50 bg-white text-center">
+              <button
+                onClick={() => {
+                    setAgreedToPrivacy(true);
+                    setShowPrivacyModal(false);
+                }}
+                className="w-full h-11 bg-pink-600 text-white rounded-xl font-bold hover:bg-pink-700 transition"
+              >
+                J'ai lu et j'accepte
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
