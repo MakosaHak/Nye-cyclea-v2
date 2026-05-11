@@ -8,6 +8,7 @@ import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster, toast } from 'sonner';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { SplashScreen } from './components/SplashScreen';
 
 // Lazy loaded components
 const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -39,8 +40,14 @@ export default function App() {
   useEffect(() => {
     // Wait for StorageService to initialize (IndexedDB is async on iOS)
     const init = async () => {
+      // Artificial delay to show the beautiful splash screen (2 seconds)
+      const splashPromise = new Promise(resolve => setTimeout(resolve, 2000));
+      
       try {
-        await StorageService.ensureReady();
+        await Promise.all([
+            StorageService.ensureReady(),
+            splashPromise
+        ]);
       } catch (e) {
         // If IndexedDB fails (e.g. private mode on iOS), continue anyway
         console.warn('Storage init failed, continuing:', e);
@@ -86,14 +93,14 @@ export default function App() {
     navigate('/');
   };
 
-  // Show loading spinner while IndexedDB initializes (important on iOS)
+  // Show professional Splash Screen while app initializes
   if (isLoading) {
-    return <LoadingFallback />;
+    return <SplashScreen />;
   }
 
   if (!isAuthenticated) {
     return (
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<SplashScreen />}>
         <AuthScreen onLogin={handleLogin} />
       </Suspense>
     );
@@ -102,7 +109,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Toaster position="top-center" richColors />
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<SplashScreen />}>
         <Routes>
           <Route element={<Layout onAddCycle={() => setShowAddCycle(true)} isPremium={isPremium} />}>
             <Route path="/" element={<Dashboard onAddCycle={() => setShowAddCycle(true)} />} />
