@@ -56,7 +56,7 @@ export class NotificationService {
       // Silently fail or use a simple fallback if really necessary
       try {
         new Notification(title, { body });
-      } catch (err) { }
+      } catch (err) {}
     }
   }
 
@@ -69,10 +69,10 @@ export class NotificationService {
     try {
       const registration = await navigator.serviceWorker.ready;
 
-      // @ts-ignore
+      // @ts-expect-error PeriodicSync is not yet in standard lib
       if ('periodicSync' in registration) {
         try {
-          // @ts-ignore
+          // @ts-expect-error PeriodicSync is not yet in standard lib
           await registration.periodicSync.register('daily-cycle-update', {
             minInterval: 24 * 60 * 60 * 1000, // 1 jour
           });

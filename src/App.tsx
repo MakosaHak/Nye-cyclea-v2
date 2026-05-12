@@ -11,19 +11,46 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { SplashScreen } from './components/SplashScreen';
 
 // Lazy loaded components
-const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
-const Calendar = lazy(() => import('./components/Calendar').then(m => ({ default: m.Calendar })));
-const CycleHistory = lazy(() => import('./components/CycleHistory').then(m => ({ default: m.CycleHistory })));
-const AddCycle = lazy(() => import('./components/AddCycle').then(m => ({ default: m.AddCycle })));
-const Settings = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
-const MedicalInfo = lazy(() => import('./components/MedicalInfo').then(m => ({ default: m.MedicalInfo })));
-const AuthScreen = lazy(() => import('./components/AuthScreen').then(m => ({ default: m.AuthScreen })));
-const Layout = lazy(() => import('./components/Layout').then(m => ({ default: m.Layout })));
-const SubscriptionScreen = lazy(() => import('./components/SubscriptionScreen').then(m => ({ default: m.SubscriptionScreen })));
+const Dashboard = lazy(() =>
+  import('./components/Dashboard').then((m) => ({ default: m.Dashboard }))
+);
+const Calendar = lazy(() => import('./components/Calendar').then((m) => ({ default: m.Calendar })));
+const CycleHistory = lazy(() =>
+  import('./components/CycleHistory').then((m) => ({ default: m.CycleHistory }))
+);
+const AddCycle = lazy(() => import('./components/AddCycle').then((m) => ({ default: m.AddCycle })));
+const Settings = lazy(() => import('./components/Settings').then((m) => ({ default: m.Settings })));
+const MedicalInfo = lazy(() =>
+  import('./components/MedicalInfo').then((m) => ({ default: m.MedicalInfo }))
+);
+const AuthScreen = lazy(() =>
+  import('./components/AuthScreen').then((m) => ({ default: m.AuthScreen }))
+);
+const Layout = lazy(() => import('./components/Layout').then((m) => ({ default: m.Layout })));
+const SubscriptionScreen = lazy(() =>
+  import('./components/SubscriptionScreen').then((m) => ({ default: m.SubscriptionScreen }))
+);
 
 const LoadingFallback = () => (
-  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff5f7' }}>
-    <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '3px solid #fda4af', borderTopColor: '#f43f5e', animation: 'spin 0.8s linear infinite' }} />
+  <div
+    style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff5f7',
+    }}
+  >
+    <div
+      style={{
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        border: '3px solid #fda4af',
+        borderTopColor: '#f43f5e',
+        animation: 'spin 0.8s linear infinite',
+      }}
+    />
     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
   </div>
 );
@@ -41,13 +68,10 @@ export default function App() {
     // Wait for StorageService to initialize (IndexedDB is async on iOS)
     const init = async () => {
       // Artificial delay to show the beautiful splash screen (2 seconds)
-      const splashPromise = new Promise(resolve => setTimeout(resolve, 2000));
-      
+      const splashPromise = new Promise((resolve) => setTimeout(resolve, 2000));
+
       try {
-        await Promise.all([
-            StorageService.ensureReady(),
-            splashPromise
-        ]);
+        await Promise.all([StorageService.ensureReady(), splashPromise]);
       } catch (e) {
         // If IndexedDB fails (e.g. private mode on iOS), continue anyway
         console.warn('Storage init failed, continuing:', e);
@@ -100,7 +124,7 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <Suspense fallback={<SplashScreen />}>
+      <Suspense fallback={<LoadingFallback />}>
         <AuthScreen onLogin={handleLogin} />
       </Suspense>
     );
@@ -109,12 +133,17 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Toaster position="top-center" richColors />
-      <Suspense fallback={<SplashScreen />}>
+      <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route element={<Layout onAddCycle={() => setShowAddCycle(true)} isPremium={isPremium} />}>
+          <Route
+            element={<Layout onAddCycle={() => setShowAddCycle(true)} isPremium={isPremium} />}
+          >
             <Route path="/" element={<Dashboard onAddCycle={() => setShowAddCycle(true)} />} />
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
-            <Route path="/calendar" element={<Calendar onAddCycle={() => setShowAddCycle(true)} />} />
+            <Route
+              path="/calendar"
+              element={<Calendar onAddCycle={() => setShowAddCycle(true)} />}
+            />
             <Route path="/history" element={<CycleHistory />} />
             <Route path="/medical" element={<MedicalInfo />} />
             <Route path="/settings" element={<Settings onLogout={handleLogout} />} />

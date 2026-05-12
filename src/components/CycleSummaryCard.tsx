@@ -4,40 +4,40 @@ import { PredictionService } from '../services/predictionService';
 import { CycleEntry, UserStats, Prediction } from '../types';
 
 interface CycleSummaryCardProps {
-    stats?: UserStats | null;
-    nextPrediction?: Prediction | null;
-    recentCycles: CycleEntry[];
+  stats?: UserStats | null;
+  nextPrediction?: Prediction | null;
+  recentCycles: CycleEntry[];
 }
 
 interface CycleSegment {
-    key: string;
-    value: number;
-    color: string;
-    lightColor: string;
-    text: string;
-    date: string;
-    icon: any;
-    isCircle?: boolean;
+  key: string;
+  value: number;
+  color: string;
+  lightColor: string;
+  text: string;
+  date: string;
+  icon: any;
+  isCircle?: boolean;
 }
 
 function formatShort(iso?: string): string {
-    if (!iso) return '-- --';
-    return PredictionService.parseISOLocal(iso).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-    });
+  if (!iso) return '-- --';
+  return PredictionService.parseISOLocal(iso).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
 function formatShortRange(startIso?: string, endIso?: string): string {
-    if (!startIso || !endIso) return '-- --';
-    return `${formatShort(startIso)} - ${formatShort(endIso)}`;
+  if (!startIso || !endIso) return '-- --';
+  return `${formatShort(startIso)} - ${formatShort(endIso)}`;
 }
 
 function daysBetween(startIso?: string, endIso?: string): number {
-    if (!startIso || !endIso) return 0;
-    const start = new Date(startIso);
-    const end = new Date(endIso);
-    return Math.max(0, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  if (!startIso || !endIso) return 0;
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 }
 
 const DONUT_SIZE = 220;
@@ -46,90 +46,90 @@ const DONUT_STROKE_TRACK = 22;
 const DONUT_STROKE_MAIN = 20;
 
 export function CycleSummaryCard({ stats, nextPrediction, recentCycles }: CycleSummaryCardProps) {
-    const cycleSummaryData = useMemo(() => {
-        const cycleLen = stats?.averageCycleLength || 28;
-        const avgPeriodLen = stats?.averagePeriodLength || 5;
+  const cycleSummaryData = useMemo(() => {
+    const cycleLen = stats?.averageCycleLength || 28;
+    const avgPeriodLen = stats?.averagePeriodLength || 5;
 
-        const periodLen = nextPrediction
-            ? daysBetween(nextPrediction.predictedStart, nextPrediction.predictedEnd)
-            : avgPeriodLen;
+    const periodLen = nextPrediction
+      ? daysBetween(nextPrediction.predictedStart, nextPrediction.predictedEnd)
+      : avgPeriodLen;
 
-        const fertileLen = nextPrediction
-            ? daysBetween(nextPrediction.fertileWindow[0], nextPrediction.fertileWindow[1])
-            : 5;
+    const fertileLen = nextPrediction
+      ? daysBetween(nextPrediction.fertileWindow[0], nextPrediction.fertileWindow[1])
+      : 5;
 
-        const ovulationLen = 1;
-        const safeLen = Math.max(0, cycleLen - (periodLen + fertileLen + ovulationLen));
+    const ovulationLen = 1;
+    const safeLen = Math.max(0, cycleLen - (periodLen + fertileLen + ovulationLen));
 
-        const lastCycle = recentCycles[0];
-        const currentPeriodStart = lastCycle?.startDate;
-        const currentPeriodEnd =
-            lastCycle?.endDate ||
-            (lastCycle
-                ? PredictionService.dateToISO(
-                    new Date(
-                        PredictionService.parseISOLocal(lastCycle.startDate).getTime() +
-                        (avgPeriodLen - 1) * 86400000
-                    )
-                )
-                : undefined);
+    const lastCycle = recentCycles[0];
+    const currentPeriodStart = lastCycle?.startDate;
+    const currentPeriodEnd =
+      lastCycle?.endDate ||
+      (lastCycle
+        ? PredictionService.dateToISO(
+            new Date(
+              PredictionService.parseISOLocal(lastCycle.startDate).getTime() +
+                (avgPeriodLen - 1) * 86400000
+            )
+          )
+        : undefined);
 
-        const segments: CycleSegment[] = [
-            {
-                key: 'Règles',
-                value: avgPeriodLen,
-                color: '#fda4af',
-                lightColor: '#fda4af1a',
-                text: '#881337',
-                icon: Droplets,
-                date: currentPeriodStart ? formatShortRange(currentPeriodStart, currentPeriodEnd) : '--',
-            },
-            {
-                key: 'Fenêtre Fertile',
-                value: fertileLen,
-                color: '#d8b4fe',
-                lightColor: '#f3e8ff',
-                text: '#6b21a8',
-                icon: Heart,
-                date: nextPrediction
-                    ? formatShortRange(nextPrediction.fertileWindow[0], nextPrediction.fertileWindow[1])
-                    : '--',
-            },
-            {
-                key: 'Ovulation',
-                value: ovulationLen,
-                color: '#5eead4',
-                lightColor: '#99f6e4',
-                text: '#115e59',
-                icon: Sparkles,
-                date: nextPrediction?.ovulationWindow
-                    ? formatShortRange(nextPrediction.ovulationWindow[0], nextPrediction.ovulationWindow[1])
-                    : formatShort(nextPrediction?.ovulationDate),
-            },
-            {
-                key: 'Jours Sûrs',
-                value: safeLen,
-                color: '#dcfce7',
-                lightColor: '#f0fdf4',
-                text: '#15803d',
-                icon: null,
-                isCircle: true,
-                date: 'Période calme',
-            },
-        ].filter((segment) => segment.value > 0);
+    const segments: CycleSegment[] = [
+      {
+        key: 'Règles',
+        value: avgPeriodLen,
+        color: '#fda4af',
+        lightColor: '#fda4af1a',
+        text: '#881337',
+        icon: Droplets,
+        date: currentPeriodStart ? formatShortRange(currentPeriodStart, currentPeriodEnd) : '--',
+      },
+      {
+        key: 'Fenêtre Fertile',
+        value: fertileLen,
+        color: '#d8b4fe',
+        lightColor: '#f3e8ff',
+        text: '#6b21a8',
+        icon: Heart,
+        date: nextPrediction
+          ? formatShortRange(nextPrediction.fertileWindow[0], nextPrediction.fertileWindow[1])
+          : '--',
+      },
+      {
+        key: 'Ovulation',
+        value: ovulationLen,
+        color: '#5eead4',
+        lightColor: '#99f6e4',
+        text: '#115e59',
+        icon: Sparkles,
+        date: nextPrediction?.ovulationWindow
+          ? formatShortRange(nextPrediction.ovulationWindow[0], nextPrediction.ovulationWindow[1])
+          : formatShort(nextPrediction?.ovulationDate),
+      },
+      {
+        key: 'Jours Sûrs',
+        value: safeLen,
+        color: '#dcfce7',
+        lightColor: '#f0fdf4',
+        text: '#15803d',
+        icon: null,
+        isCircle: true,
+        date: 'Période calme',
+      },
+    ].filter((segment) => segment.value > 0);
 
-        const total = segments.reduce((sum, segment) => sum + segment.value, 0) || 1;
-        return { segments, total, cycleLen };
-    }, [stats, nextPrediction, recentCycles]);
+    const total = segments.reduce((sum, segment) => sum + segment.value, 0) || 1;
+    return { segments, total, cycleLen };
+  }, [stats, nextPrediction, recentCycles]);
 
-    const { segments, total, cycleLen } = cycleSummaryData;
-    const cx = DONUT_SIZE / 2;
-    const cy = DONUT_SIZE / 2;
-    const circumference = 2 * Math.PI * DONUT_RADIUS;
+  const { segments, total, cycleLen } = cycleSummaryData;
+  const cx = DONUT_SIZE / 2;
+  const cy = DONUT_SIZE / 2;
+  const circumference = 2 * Math.PI * DONUT_RADIUS;
 
-    return (
-        <div className="cycle-summary-wrapper">
-            <style>{`
+  return (
+    <div className="cycle-summary-wrapper">
+      <style>{`
                 .glass-container {
                     background: linear-gradient(135deg, 
                         rgba(255, 255, 255, 0.8) 0%, 
@@ -269,93 +269,109 @@ export function CycleSummaryCard({ stats, nextPrediction, recentCycles }: CycleS
                 }
             `}</style>
 
-            <div className="glass-container">
-                {/* Background Orbs */}
-                <div className="bg-orb orb-rose" />
-                <div className="bg-orb orb-white" />
+      <div className="glass-container">
+        {/* Background Orbs */}
+        <div className="bg-orb orb-rose" />
+        <div className="bg-orb orb-white" />
 
-                <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-6 px-1">
-                        <Sparkles className="summary-icon w-5 h-5 text-rose-600" />
-                        <h3 className="summary-title text-lg font-bold text-shadow-sm">Résumé de votre cycle</h3>
-                    </div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-6 px-1">
+            <Sparkles className="summary-icon w-5 h-5 text-rose-600" />
+            <h3 className="summary-title text-lg font-bold text-shadow-sm">
+              Résumé de votre cycle
+            </h3>
+          </div>
 
-                    <div className="chart-container">
-                        <svg
-                            width={DONUT_SIZE}
-                            height={DONUT_SIZE}
-                            viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
-                            style={{ transform: 'rotate(-90deg)' }}
-                        >
-                            {/* Base track */}
-                            <circle
-                                cx={cx} cy={cy} r={DONUT_RADIUS}
-                                fill="none"
-                                stroke="rgba(255, 255, 255, 0.5)"
-                                strokeWidth={DONUT_STROKE_TRACK}
-                            />
+          <div className="chart-container">
+            <svg
+              width={DONUT_SIZE}
+              height={DONUT_SIZE}
+              viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
+              style={{ transform: 'rotate(-90deg)' }}
+            >
+              {/* Base track */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={DONUT_RADIUS}
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.5)"
+                strokeWidth={DONUT_STROKE_TRACK}
+              />
 
-                            {/* Colored segments */}
-                            {(() => {
-                                let offset = 0;
-                                return segments.map((seg) => {
-                                    const segLen = (seg.value / total) * circumference;
-                                    const segOffset = circumference - offset;
-                                    offset += segLen;
-                                    return (
-                                        <circle
-                                            key={seg.key}
-                                            cx={cx} cy={cy} r={DONUT_RADIUS}
-                                            fill="none"
-                                            stroke={seg.color}
-                                            strokeWidth={DONUT_STROKE_MAIN}
-                                            strokeDasharray={`${segLen} ${circumference - segLen}`}
-                                            strokeDashoffset={segOffset}
-                                            strokeLinecap="round"
-                                            style={{ transition: 'stroke-dashoffset 1s ease' }}
-                                        />
-                                    );
-                                });
-                            })()}
-                        </svg>
+              {/* Colored segments */}
+              {(() => {
+                let offset = 0;
+                return segments.map((seg) => {
+                  const segLen = (seg.value / total) * circumference;
+                  const segOffset = circumference - offset;
+                  offset += segLen;
+                  return (
+                    <circle
+                      key={seg.key}
+                      cx={cx}
+                      cy={cy}
+                      r={DONUT_RADIUS}
+                      fill="none"
+                      stroke={seg.color}
+                      strokeWidth={DONUT_STROKE_MAIN}
+                      strokeDasharray={`${segLen} ${circumference - segLen}`}
+                      strokeDashoffset={segOffset}
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dashoffset 1s ease' }}
+                    />
+                  );
+                });
+              })()}
+            </svg>
 
-                        <div className="donut-inner">
-                            <span className="text-4xl font-black text-gray-800 tracking-tighter leading-none">
-                                {cycleLen}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                                Jours
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 space-y-2.5">
-                        {segments.map((seg) => {
-                            const Icon = seg.icon;
-                            return (
-                                <div key={seg.key} className="legend-item">
-                                    <div className="flex items-center">
-                                        <div className="segment-icon-box" style={{ background: seg.lightColor, color: seg.text }}>
-                                            {Icon ? <Icon size={18} /> : <div className="safe-circle" />}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-gray-800">{seg.key}</span>
-                                            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">{seg.date}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-right">
-                                            <span className="text-lg font-black text-gray-800 leading-none block">{seg.value}</span>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase">Jours</span>
-                                        </div>
-                                        <div className="w-1.5 h-7 rounded-full" style={{ backgroundColor: seg.color }} />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+            <div className="donut-inner">
+              <span className="text-4xl font-black text-gray-800 tracking-tighter leading-none">
+                {cycleLen}
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                Jours
+              </span>
             </div>
+          </div>
+
+          <div className="mt-8 space-y-2.5">
+            {segments.map((seg) => {
+              const Icon = seg.icon;
+              return (
+                <div key={seg.key} className="legend-item">
+                  <div className="flex items-center">
+                    <div
+                      className="segment-icon-box"
+                      style={{ background: seg.lightColor, color: seg.text }}
+                    >
+                      {Icon ? <Icon size={18} /> : <div className="safe-circle" />}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-800">{seg.key}</span>
+                      <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
+                        {seg.date}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-lg font-black text-gray-800 leading-none block">
+                        {seg.value}
+                      </span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Jours</span>
+                    </div>
+                    <div
+                      className="w-1.5 h-7 rounded-full"
+                      style={{ backgroundColor: seg.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

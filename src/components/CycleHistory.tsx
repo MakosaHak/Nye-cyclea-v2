@@ -1,53 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Trash2, Edit, TrendingUp, Clock, Download, Lock } from 'lucide-react';
+import { Calendar, Trash2, TrendingUp, Clock, Download, Lock } from 'lucide-react';
 import { StorageService } from '../services/storageService';
-import { PredictionService } from '../services/predictionService';
 import { CycleEntry } from '../types';
 import { PDFService } from '../services/pdfService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { useCyclesContext } from '../contexts/CyclesContext';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './ConfirmDialog';
 
 export function CycleHistory() {
   const navigate = useNavigate();
-  const [cycles, setCycles] = useState<CycleEntry[]>([]);
-  const [sortedCycles, setSortedCycles] = useState<CycleEntry[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { cycles, stats, deleteCycle, loading } = useCyclesContext();
   const [cycleToDelete, setCycleToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadCycles();
-    // Listen for storage changes to refresh when settings change
-    const handleStorageChange = () => {
-      loadCycles();
-      setRefreshKey((prev) => prev + 1);
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  const loadCycles = () => {
-    const loadedCycles = StorageService.getCycles();
-    const sorted = [...loadedCycles].sort(
+  const sortedCycles = useMemo(() => {
+    return [...cycles].sort(
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     );
-    setCycles(loadedCycles);
-    setSortedCycles(sorted);
-  };
-
-  const handleDelete = (cycleId: string) => {
-    setCycleToDelete(cycleId);
-  };
+  }, [cycles]);
 
   const handleConfirmDelete = async () => {
     if (!cycleToDelete) return;
-    await StorageService.deleteCycle(cycleToDelete);
-    toast.success('Cycle supprimé avec succès');
-    loadCycles();
-    setCycleToDelete(null);
+    try {
+      await deleteCycle(cycleToDelete);
+      toast.success('Cycle supprimé avec succès');
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setCycleToDelete(null);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -77,14 +59,18 @@ export function CycleHistory() {
     return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  // Recalculate stats whenever cycles change
-  const stats = PredictionService.calculateUserStats(cycles);
-
   // Check if we're using calculated values or defaults
-  const cyclesWithEndDate = cycles.filter((c) => c.endDate).length;
-  const cycleIntervals = Math.max(0, cycles.length - 1);
+  const cyclesWithEndDate = useMemo(() => cycles.filter((c) => c.endDate).length, [cycles]);
+  const cycleIntervals = useMemo(() => Math.max(0, cycles.length - 1), [cycles]);
   const usingCalculatedPeriod = cyclesWithEndDate > 0;
-  const usingCalculatedCycle = cycleIntervals > 0;
+
+  if (loading && cycles.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500" />
+      </div>
+    );
+  }
 
   if (cycles.length === 0) {
     return (
@@ -102,8 +88,11 @@ export function CycleHistory() {
     );
   }
 
+  const auth = StorageService.getAuth();
+  const isPremium = SubscriptionService.isPremium(auth?.subscriptionType);
+
   return (
-    <>
+    <div className="space-y-6">
       {/* Statistics */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <h2 className="text-gray-800 mb-4 font-bold text-xl">Statistiques</h2>
@@ -126,9 +115,7 @@ export function CycleHistory() {
             <p className="text-3xl text-pink-900">{stats.averagePeriodLength}</p>
             <p className="text-sm text-gray-600">jours</p>
             {!usingCalculatedPeriod && (
-              <p className="text-xs text-gray-500 mt-1">
-                (Valeur par défaut - ajoutez des dates de fin pour calculer la moyenne réelle)
-              </p>
+              <p className="text-xs text-gray-500 mt-1">(Valeur par défaut)</p>
             )}
           </div>
 
@@ -191,8 +178,7 @@ export function CycleHistory() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      const auth = StorageService.getAuth();
-                      if (SubscriptionService.isPremium(auth?.subscriptionType)) {
+                      if (isPremium) {
                         PDFService.generateCyclePDF(cycle);
                       } else {
                         navigate('/subscribe');
@@ -200,32 +186,27 @@ export function CycleHistory() {
                     }}
                     className="relative w-9 h-9 rounded-lg hover:bg-pink-50 flex items-center justify-center transition-colors group border border-pink-100/50"
                     aria-label={
-                      SubscriptionService.isPremium(StorageService.getAuth()?.subscriptionType)
+                      isPremium
                         ? 'Télécharger le rapport PDF pour ce cycle'
                         : 'Passer à la version Pro pour les rapports PDF'
                     }
-                    title={
-                      SubscriptionService.isPremium(StorageService.getAuth()?.subscriptionType)
-                        ? 'Télécharger le rapport pour ce cycle'
-                        : 'Passer à Nye Cyclea Pro pour débloquer les rapports PDF'
-                    }
                   >
                     <Download
-                      className={`w-4 h-4 ${SubscriptionService.isPremium(StorageService.getAuth()?.subscriptionType) ? 'text-pink-400 group-hover:text-pink-600' : 'text-gray-400'}`}
+                      className={`w-4 h-4 ${isPremium ? 'text-pink-400 group-hover:text-pink-600' : 'text-gray-400'}`}
+                      aria-hidden="true"
                     />
-                    {!SubscriptionService.isPremium(StorageService.getAuth()?.subscriptionType) && (
-                      <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border border-white">
+                    {!isPremium && (
+                      <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border border-white" aria-hidden="true">
                         <Lock className="w-2 h-2 text-white" />
                       </div>
                     )}
                   </button>
                   <button
-                    onClick={() => handleDelete(cycle.id)}
+                    onClick={() => setCycleToDelete(cycle.id)}
                     className="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors group"
                     aria-label="Supprimer ce cycle"
-                    title="Supprimer ce cycle"
                   >
-                    <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600" />
+                    <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -296,6 +277,6 @@ export function CycleHistory() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setCycleToDelete(null)}
       />
-    </>
+    </div>
   );
 }

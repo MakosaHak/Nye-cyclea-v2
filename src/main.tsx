@@ -18,15 +18,19 @@ registerSW({
     });
   },
   onOfflineReady() {
-    console.log('L\'application est prête pour le mode hors-ligne.');
+    console.log("L'application est prête pour le mode hors-ligne.");
   },
 });
 
 // Register periodic background sync for notifications
 NotificationService.registerPeriodicSync();
 
+import { CyclesProvider } from './contexts/CyclesContext';
+
 createRoot(document.getElementById('root')!).render(
   <HashRouter>
-    <App />
+    <CyclesProvider>
+      <App />
+    </CyclesProvider>
   </HashRouter>
 );

@@ -254,7 +254,10 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
               className={`w-full h-12 rounded-2xl text-white font-medium transition flex items-center justify-center gap-2 ${mode === 'signup' && !agreedToPrivacy ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               style={{
                 background: 'linear-gradient(90deg, #fb7185 0%, #f472b6 100%)',
-                boxShadow: mode === 'signup' && !agreedToPrivacy ? 'none' : '0 10px 22px rgba(244,114,182,0.22)',
+                boxShadow:
+                  mode === 'signup' && !agreedToPrivacy
+                    ? 'none'
+                    : '0 10px 22px rgba(244,114,182,0.22)',
               }}
             >
               <span>{mode === 'login' ? 'Se connecter' : "S'inscrire"}</span>
@@ -270,7 +273,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
           <div className="bg-white w-full max-w-lg max-h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-pink-100 animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-pink-50 bg-pink-50/30 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-900">Politique de confidentialité</h3>
-              <button 
+              <button
                 onClick={() => setShowPrivacyModal(false)}
                 className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-400 transition"
               >
@@ -283,8 +286,8 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
             <div className="p-4 border-t border-pink-50 bg-white text-center">
               <button
                 onClick={() => {
-                    setAgreedToPrivacy(true);
-                    setShowPrivacyModal(false);
+                  setAgreedToPrivacy(true);
+                  setShowPrivacyModal(false);
                 }}
                 className="w-full h-11 bg-pink-600 text-white rounded-xl font-bold hover:bg-pink-700 transition"
               >

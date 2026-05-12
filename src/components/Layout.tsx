@@ -29,7 +29,6 @@ export function Layout({ onAddCycle, isPremium }: LayoutProps) {
 
   return (
     <div className="min-h-screen">
-
       {/* Original solid white header */}
       <header className="bg-white border-b border-pink-100 sticky top-0 z-40 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -80,13 +79,16 @@ export function Layout({ onAddCycle, isPremium }: LayoutProps) {
               <button
                 key={key}
                 onClick={() => navigate(path)}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-2 rounded-2xl transition-all ${active
-                  ? 'bg-pink-50 text-pink-600 scale-105'
-                  : 'text-gray-400 hover:bg-pink-50 hover:text-pink-500 active:scale-95'
-                  }`}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-2 rounded-2xl transition-all ${
+                  active
+                    ? 'bg-pink-50 text-pink-600 scale-105'
+                    : 'text-gray-400 hover:bg-pink-50 hover:text-pink-500 active:scale-95'
+                }`}
               >
                 <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
-                <span className={`text-[10px] leading-none ${active ? 'font-bold' : 'font-medium'}`}>
+                <span
+                  className={`text-[10px] leading-none ${active ? 'font-bold' : 'font-medium'}`}
+                >
                   {label}
                 </span>
               </button>
@@ -97,4 +99,3 @@ export function Layout({ onAddCycle, isPremium }: LayoutProps) {
     </div>
   );
 }
-

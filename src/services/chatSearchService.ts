@@ -1,4 +1,4 @@
-import { searchOfflineKB, getFallbackMessage, initOfflineDB } from './offlineStorageService';
+import { StorageService } from './storageService';
 import { getInitialKBData, KBEntry } from './chatLocalKB';
 
 // Lazy init state
@@ -12,7 +12,7 @@ const normalize = (s: string) =>
 
 async function ensureDbReady() {
   if (!isDbInitialized) {
-    await initOfflineDB(getInitialKBData());
+    await StorageService.initChatDB(getInitialKBData());
     isDbInitialized = true;
   }
 }
@@ -29,10 +29,10 @@ export async function findBestAnswer(question: string): Promise<string> {
   const terms = qClean.split(/[^a-z0-9]+/).filter((t) => t.length > 2); // Filter short words
 
   if (terms.length === 0) {
-    return await getFallbackMessage();
+    return await StorageService.getChatFallback();
   }
 
-  const allEntries = await searchOfflineKB();
+  const allEntries = await StorageService.searchChatKB();
 
   const scoredEntries = allEntries.map((entry) => {
     let score = 0;
@@ -69,15 +69,15 @@ export async function findBestAnswer(question: string): Promise<string> {
     return answer;
   }
 
-  return await getFallbackMessage();
+  return await StorageService.getChatFallback();
 }
 
 // Wrapper to return {entry} structure expected by Chat.tsx temporarily
-export async function localSearch(question: string, limit = 1): Promise<LocalSearchResult[]> {
-  const answer = await findBestAnswer(question);
+export async function localSearch(question: string): Promise<LocalSearchResult[]> {
+    const answer = await findBestAnswer(question);
 
   // Check if it's the fallback
-  const fallbackMsg = await getFallbackMessage();
+  const fallbackMsg = await StorageService.getChatFallback();
   const isFallback = answer === fallbackMsg;
 
   return [

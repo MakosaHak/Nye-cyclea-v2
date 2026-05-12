@@ -1,9 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Check, X, FileText, 
-  Loader2, Zap, Heart, Star, ChevronRight,
-  Lock, Sparkles
+import {
+  ArrowLeft,
+  Check,
+  X,
+  FileText,
+  Loader2,
+  Zap,
+  Heart,
+  Star,
+  ChevronRight,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { toast } from 'sonner';
@@ -28,8 +36,10 @@ export function SubscriptionScreen() {
 
     try {
       setLoadingPlan(planId);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.info(`Paiement bientôt disponible ! Plan : ${planId === 'monthly' ? 'Mensuel' : 'Annuel'}`);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      toast.info(
+        `Paiement bientôt disponible ! Plan : ${planId === 'monthly' ? 'Mensuel' : 'Annuel'}`
+      );
     } catch (error: any) {
       console.error('Error:', error);
       toast.error('Une erreur est survenue.');
@@ -334,17 +344,21 @@ export function SubscriptionScreen() {
 
       <img src="/icons/pwa-192x192.png" alt="Logo" className="app-logo" />
 
-      <h1 className="title-h1">Choisissez votre plan<br/><span>Nye Cyclea Premium</span></h1>
+      <h1 className="title-h1">
+        Choisissez votre plan
+        <br />
+        <span>Nye Cyclea Premium</span>
+      </h1>
 
       <div className="premium-card">
         <div className="billing-selector">
-          <button 
+          <button
             className={`billing-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
             onClick={() => setBillingCycle('monthly')}
           >
             Mensuel
           </button>
-          <button 
+          <button
             className={`billing-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
             onClick={() => setBillingCycle('yearly')}
           >
@@ -354,12 +368,12 @@ export function SubscriptionScreen() {
         </div>
 
         <div className="price-display">
-          <span className="price-amount">
-            {billingCycle === 'yearly' ? '5 000' : '500'}
-          </span>
+          <span className="price-amount">{billingCycle === 'yearly' ? '5 000' : '500'}</span>
           <span className="price-currency">FCFA</span>
           <span className="price-info">
-            {billingCycle === 'yearly' ? 'Soit environ 417 FCFA par mois' : 'Paiement mensuel sans engagement'}
+            {billingCycle === 'yearly'
+              ? 'Soit environ 417 FCFA par mois'
+              : 'Paiement mensuel sans engagement'}
           </span>
         </div>
 
@@ -374,7 +388,7 @@ export function SubscriptionScreen() {
           ))}
         </div>
 
-        <button 
+        <button
           className="cta-btn"
           onClick={() => handleSubscribe(billingCycle)}
           disabled={loadingPlan !== null}
@@ -393,10 +407,22 @@ export function SubscriptionScreen() {
       <div className="comparison-box">
         <h3 className="comp-title">Gratuit vs Premium</h3>
         <div className="comp-row" style={{ borderBottom: '2px solid rgba(244, 63, 94, 0.1)' }}>
-          <span className="comp-label" style={{ opacity: 0 }}>Feature</span>
+          <span className="comp-label" style={{ opacity: 0 }}>
+            Feature
+          </span>
           <div className="comp-values">
-            <span className="comp-label" style={{ width: '24px', textAlign: 'center', fontSize: '0.65rem' }}>Gratuit</span>
-            <span className="comp-label" style={{ width: '24px', textAlign: 'center', fontSize: '0.65rem', color: '#f43f5e' }}>Pro</span>
+            <span
+              className="comp-label"
+              style={{ width: '24px', textAlign: 'center', fontSize: '0.65rem' }}
+            >
+              Gratuit
+            </span>
+            <span
+              className="comp-label"
+              style={{ width: '24px', textAlign: 'center', fontSize: '0.65rem', color: '#f43f5e' }}
+            >
+              Pro
+            </span>
           </div>
         </div>
         {comparisonData.map((row, i) => (

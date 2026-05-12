@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Droplets, Heart, Sparkles, Plus } from 'lucide-react';
-import { StorageService } from '../services/storageService';
 import { PredictionService } from '../services/predictionService';
-import { CycleEntry, Prediction } from '../types';
+import { useCyclesContext } from '../contexts/CyclesContext';
 import { CalendarLegend } from './CalendarLegend';
 
 interface CalendarProps {
@@ -10,125 +9,58 @@ interface CalendarProps {
 }
 
 export function Calendar({ onAddCycle }: CalendarProps) {
+  const { cycles, predictions, loading } = useCyclesContext();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [cycles, setCycles] = useState<CycleEntry[]>([]);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
-    const loadedCycles = StorageService.getCycles();
-    setCycles(loadedCycles);
-
-    if (loadedCycles.length > 0) {
-      const futurePredictions = PredictionService.predictNext6Months(loadedCycles);
-      setPredictions(futurePredictions);
-    }
-  };
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    // Convert Sunday (0) to 7 for European week (Monday = 1)
-    return firstDay === 0 ? 6 : firstDay - 1;
-  };
-
-  const getDayType = (
-    day: number
-  ): {
-    type: 'period' | 'fertile' | 'ovulation' | 'predicted-period' | 'safe' | 'normal';
-    label: string;
-  } => {
+  const monthInfo = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const checkDate = new Date(year, month, day);
-    checkDate.setHours(0, 0, 0, 0);
 
-    // Check actual recorded cycles
-    for (const cycle of cycles) {
-      const start = PredictionService.parseISOLocal(cycle.startDate);
-      start.setHours(0, 0, 0, 0);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    // Convert Sunday (0) to 7 for European week (Monday = 1)
+    const firstDayIndex = firstDay === 0 ? 6 : firstDay - 1;
 
-      if (cycle.endDate) {
-        const end = PredictionService.parseISOLocal(cycle.endDate);
-        end.setHours(0, 0, 0, 0);
-        if (checkDate >= start && checkDate <= end) {
-          return { type: 'period', label: 'Règles' };
-        }
-      } else {
-        const stats = PredictionService.calculateUserStats(cycles);
-        const estimatedEnd = new Date(start);
-        estimatedEnd.setDate(estimatedEnd.getDate() + (stats.averagePeriodLength - 1));
-        if (checkDate >= start && checkDate <= estimatedEnd) {
-          return { type: 'period', label: 'Règles' };
-        }
-      }
-    }
+    const monthName = currentDate.toLocaleDateString('fr-FR', {
+      month: 'long',
+      year: 'numeric',
+    });
 
-    // Check predictions
-    for (const prediction of predictions) {
-      const pStart = PredictionService.parseISOLocal(prediction.predictedStart);
-      pStart.setHours(0, 0, 0, 0);
-      const pEnd = PredictionService.parseISOLocal(prediction.predictedEnd);
-      pEnd.setHours(0, 0, 0, 0);
+    return { daysInMonth, firstDayIndex, monthName };
+  }, [currentDate]);
 
-      // Central Prediction (The most likely days)
-      if (checkDate >= pStart && checkDate <= pEnd) {
-        return { type: 'predicted-period', label: 'Règles prévues' };
-      }
-
-      if (prediction.predictedStartRange) {
-        // Uncertainty window — no distinct styling, used by logic only
-      }
-
-      // Ovulation: prefer window if available
-      if (prediction.ovulationWindow) {
-        const ovStart = PredictionService.parseISOLocal(prediction.ovulationWindow[0]);
-        ovStart.setHours(0, 0, 0, 0);
-        const ovEnd = PredictionService.parseISOLocal(prediction.ovulationWindow[1]);
-        ovEnd.setHours(0, 0, 0, 0);
-        if (checkDate >= ovStart && checkDate <= ovEnd) {
-          return { type: 'ovulation', label: 'Ovulation' };
-        }
-      } else {
-        const ovulation = PredictionService.parseISOLocal(prediction.ovulationDate);
-        ovulation.setHours(0, 0, 0, 0);
-        if (checkDate.getTime() === ovulation.getTime()) {
-          return { type: 'ovulation', label: 'Ovulation' };
-        }
-      }
-
-      const fertileStart = PredictionService.parseISOLocal(prediction.fertileWindow[0]);
-      fertileStart.setHours(0, 0, 0, 0);
-      const fertileEnd = PredictionService.parseISOLocal(prediction.fertileWindow[1]);
-      fertileEnd.setHours(0, 0, 0, 0);
-
-      if (checkDate >= fertileStart && checkDate <= fertileEnd) {
-        return { type: 'fertile', label: 'Fenêtre fertile' };
-      }
-    }
-
-    return { type: 'safe', label: 'Jour sûr' };
-  };
-
-  const isToday = (day: number) => {
+  const daysGrid = useMemo(() => {
+    const { daysInMonth, firstDayIndex } = monthInfo;
+    const days = [];
     const today = new Date();
-    return (
-      day === today.getDate() &&
-      currentDate.getMonth() === today.getMonth() &&
-      currentDate.getFullYear() === today.getFullYear()
-    );
-  };
+    today.setHours(0, 0, 0, 0);
+
+    // Empty slots for previous month
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push({ type: 'empty', key: `empty-${i}` });
+    }
+
+    // Actual days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+      const dayInfo = PredictionService.getDayInfo(date, cycles, predictions);
+      const isToday =
+        day === today.getDate() &&
+        currentDate.getMonth() === today.getMonth() &&
+        currentDate.getFullYear() === today.getFullYear();
+
+      days.push({
+        day,
+        date,
+        isToday,
+        ...dayInfo,
+        key: `day-${day}`,
+      });
+    }
+
+    return days;
+  }, [currentDate, cycles, predictions, monthInfo]);
 
   const previousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
@@ -138,16 +70,16 @@ export function Calendar({ onAddCycle }: CalendarProps) {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
   };
 
-  const renderDayContent = (day: number, type: string) => {
+  const renderDayContent = (type: string) => {
     switch (type) {
       case 'period':
-        return <Droplets className="w-3 h-3 mt-1" />;
+        return <Droplets className="w-3 h-3 mt-1 text-white" />;
       case 'predicted-period':
         return <Droplets className="w-3 h-3 mt-1 opacity-40" />;
       case 'ovulation':
-        return <Sparkles className="w-3 h-3 mt-1" />;
+        return <Sparkles className="w-3 h-3 mt-1 text-white" />;
       case 'fertile':
-        return <Heart className="w-3 h-3 mt-1" />;
+        return <Heart className="w-3 h-3 mt-1 text-rose-500" />;
       case 'safe':
         return <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2" />;
       default:
@@ -155,51 +87,41 @@ export function Calendar({ onAddCycle }: CalendarProps) {
     }
   };
 
-  const getDayClass = (type: string) => {
+  const getDayClass = (type: string, isToday: boolean) => {
+    let baseClass =
+      'aspect-square rounded-xl flex flex-col items-center justify-center transition-all relative ';
+
     switch (type) {
       case 'period':
-        return 'cal-day-period';
+        baseClass += 'cal-day-period';
+        break;
       case 'predicted-period':
-        return 'cal-day-predicted';
+        baseClass += 'cal-day-predicted';
+        break;
       case 'ovulation':
-        return 'cal-day-ovulation';
+        baseClass += 'cal-day-ovulation';
+        break;
       case 'fertile':
-        return 'cal-day-fertile';
+        baseClass += 'cal-day-fertile';
+        break;
       case 'safe':
-        return 'cal-day-safe';
+        baseClass += 'cal-day-safe';
+        break;
       default:
-        return 'cal-day-base';
+        baseClass += 'cal-day-base';
     }
+
+    if (isToday) baseClass += ' cal-day-today';
+    else baseClass += ' hover:opacity-80';
+
+    return baseClass;
   };
 
-  const monthName = currentDate.toLocaleDateString('fr-FR', {
-    month: 'long',
-    year: 'numeric',
-  });
-  const daysInMonth = getDaysInMonth(currentDate);
-  const firstDay = getFirstDayOfMonth(currentDate);
-
-  const days = [];
-  for (let i = 0; i < firstDay; i++) {
-    days.push(<div key={`empty-${i}`} className="aspect-square" />);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dayInfo = getDayType(day);
-    const today = isToday(day);
-    const customClass = getDayClass(dayInfo.type);
-
-    days.push(
-      <button
-        key={day}
-        onClick={() =>
-          setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))
-        }
-        className={`aspect-square rounded-xl flex flex-col items-center justify-center transition-all relative ${customClass} ${today ? 'cal-day-today' : 'hover:opacity-80'}`}
-      >
-        <span className="text-sm font-bold">{day}</span>
-        {renderDayContent(day, dayInfo.type)}
-      </button>
+  if (loading && cycles.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500" />
+      </div>
     );
   }
 
@@ -210,13 +132,13 @@ export function Calendar({ onAddCycle }: CalendarProps) {
         <button
           onClick={previousMonth}
           className="p-3 rounded-full bg-white shadow-sm border border-gray-100 text-gray-600 hover:bg-gray-50 transition-all font-bold"
-          aria-label="Mois précédent"
+          aria-label="Passer au mois précédent"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 capitalize tracking-tight">
-            {monthName}
+          <h2 className="text-2xl font-bold text-gray-800 capitalize tracking-tight" aria-live="polite">
+            {monthInfo.monthName}
           </h2>
           <p className="text-xs text-rose-400 font-bold uppercase tracking-widest mt-1">
             Votre Cycle
@@ -225,9 +147,9 @@ export function Calendar({ onAddCycle }: CalendarProps) {
         <button
           onClick={nextMonth}
           className="p-3 rounded-full bg-white shadow-sm border border-gray-100 text-gray-600 hover:bg-gray-50 transition-all font-bold"
-          aria-label="Mois suivant"
+          aria-label="Passer au mois suivant"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-5 h-5" aria-hidden="true" />
         </button>
       </div>
 
@@ -248,7 +170,28 @@ export function Calendar({ onAddCycle }: CalendarProps) {
           </div>
 
           {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-2 sm:gap-3">{days}</div>
+          <div className="grid grid-cols-7 gap-2 sm:gap-3">
+            {daysGrid.map((dayObj) => {
+              if (dayObj.type === 'empty') {
+                return <div key={dayObj.key} className="aspect-square" />;
+              }
+
+              return (
+                <button
+                  key={dayObj.key}
+                  onClick={() => setSelectedDate(dayObj.date || null)}
+                  className={getDayClass(dayObj.type, !!dayObj.isToday)}
+                  aria-label={`Jour ${dayObj.day} du mois, ${dayObj.label}`}
+                >
+                  <span className={`text-sm font-bold ${['period', 'ovulation'].includes(dayObj.type) ? 'text-white' : ''}`}>
+                    {dayObj.day}
+                  </span>
+                  {renderDayContent(dayObj.type)}
+                </button>
+              );
+
+            })}
+          </div>
         </div>
 
         {/* Divider */}

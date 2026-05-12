@@ -5,7 +5,6 @@ import { localSearch } from '../services/chatSearchService';
 import { onlineAIAnswer } from '../services/chatAiService';
 import { applyHealthSafety, enforceHealthRules } from '../services/chatSafetyService';
 import { getInitialKBData } from '../services/chatLocalKB';
-import { initOfflineDB } from '../services/offlineStorageService';
 import { StorageService } from '../services/storageService';
 import type { ChatMessage } from '../types/chat';
 
@@ -33,21 +32,26 @@ export function Chat() {
 
   useEffect(() => {
     const off = onConnectivityChange(setMode);
-    initOfflineDB(getInitialKBData()).catch(console.error); // Initialize DB immediately with data
+    StorageService.initChatDB(getInitialKBData()).catch(console.error); // Initialize DB immediately with data
     return () => off();
   }, []);
 
+import React, { useState, useEffect, useRef } from 'react';
+...
   useEffect(() => {
-    if (messages.length === 0) {
-      const welcome: ChatMessage = {
-        id: uuid(),
-        role: 'assistant',
-        content:
-          'Bonjour ! Je suis Nye, votre assistante santé personnelle. \n\nJe suis là pour répondre à toutes vos questions sur votre cycle, votre bien-être, ou juste pour discuter. ✨',
-        createdAt: new Date().toISOString(),
-      };
-      setMessages([welcome]);
-    }
+    setMessages((prev) => {
+      if (prev.length === 0) {
+        const welcome: ChatMessage = {
+          id: uuid(),
+          role: 'assistant',
+          content:
+            'Bonjour ! Je suis Nye, votre assistante santé personnelle. \n\nJe suis là pour répondre à toutes vos questions sur votre cycle, votre bien-être, ou juste pour discuter. ✨',
+          createdAt: new Date().toISOString(),
+        };
+        return [welcome];
+      }
+      return prev;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

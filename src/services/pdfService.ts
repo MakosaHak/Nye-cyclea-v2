@@ -82,7 +82,7 @@ export class PDFService {
       // --- 1. HEADER (EDITORIAL STYLE) ---
       try {
         doc.addImage('/icons/pwa-192x192.png', 'PNG', margin, 12, 12, 12);
-      } catch (e) { }
+      } catch (e) {}
 
       useSerif(22, theme.primary, 'bold');
       doc.text('Nye Cyclea', margin + 16, 21);

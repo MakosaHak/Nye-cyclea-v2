@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { useCycles } from '../hooks/useCycles';
-import { usePredictions } from '../hooks/usePredictions';
+import { useCyclesContext } from '../contexts/CyclesContext';
+import { PredictionService } from '../services/predictionService';
 import { PhaseCard } from './PhaseCard';
 import { CycleSummaryCard } from './CycleSummaryCard';
 
@@ -10,9 +10,16 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onAddCycle }: DashboardProps) {
-  const { cycles } = useCycles();
-  const { stats, nextPrediction, currentPhase } = usePredictions(cycles);
+  const { cycles, stats, predictions } = useCyclesContext();
+
   const recentCycles = useMemo(() => cycles.slice(0, 3), [cycles]);
+
+  // Use prediction logic directly from service or derived state
+  const nextPrediction = useMemo(() => predictions[0] || null, [predictions]);
+
+  const currentPhase = useMemo(() => {
+    return cycles.length > 0 ? PredictionService.getCurrentPhase(cycles) : null;
+  }, [cycles]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -23,11 +30,7 @@ export function Dashboard({ onAddCycle }: DashboardProps) {
         onAddCycle={onAddCycle}
       />
 
-      <CycleSummaryCard
-        stats={stats}
-        nextPrediction={nextPrediction}
-        recentCycles={recentCycles}
-      />
+      <CycleSummaryCard stats={stats} nextPrediction={nextPrediction} recentCycles={recentCycles} />
 
       {recentCycles.length === 0 && (
         <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex gap-3">

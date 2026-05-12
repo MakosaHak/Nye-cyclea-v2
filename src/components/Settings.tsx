@@ -50,10 +50,15 @@ export function Settings({ onLogout }: SettingsProps) {
     };
 
     refreshSubscription();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [auth?.id]);
 
-  const handleSettingChange = async (key: keyof UserSettings, value: UserSettings[keyof UserSettings]) => {
+  const handleSettingChange = async (
+    key: keyof UserSettings,
+    value: UserSettings[keyof UserSettings]
+  ) => {
     if (key === 'notificationsOn' && value === true) {
       const { NotificationService } = await import('../services/notificationService');
       const granted = await NotificationService.requestPermission();
@@ -83,10 +88,7 @@ export function Settings({ onLogout }: SettingsProps) {
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <h2 className="text-gray-800 mb-6 font-bold text-xl">Paramètres</h2>
 
-        <SettingsInstallSection
-          isDetailsOpen={isDetailsOpen}
-          onDetailsToggle={setIsDetailsOpen}
-        />
+        <SettingsInstallSection isDetailsOpen={isDetailsOpen} onDetailsToggle={setIsDetailsOpen} />
 
         <SettingsAccountSection auth={auth} isPremium={isPremium} />
 
@@ -104,7 +106,7 @@ export function Settings({ onLogout }: SettingsProps) {
 
         {/* Privacy Policy Integrated Section */}
         <div className="mb-6 pb-6 border-b border-gray-200">
-          <button 
+          <button
             onClick={() => setIsPolicyOpen(!isPolicyOpen)}
             className="w-full flex items-center justify-between group py-2"
           >
@@ -112,11 +114,11 @@ export function Settings({ onLogout }: SettingsProps) {
               <Lock className="w-5 h-5 text-gray-600" />
               <h3 className="text-gray-700 font-semibold text-lg">Politique de confidentialité</h3>
             </div>
-            <ChevronDown 
-              className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isPolicyOpen ? 'rotate-180' : ''}`} 
+            <ChevronDown
+              className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isPolicyOpen ? 'rotate-180' : ''}`}
             />
           </button>
-          
+
           {isPolicyOpen && <PrivacyPolicyContent />}
         </div>
 
@@ -128,7 +130,8 @@ export function Settings({ onLogout }: SettingsProps) {
           </h3>
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-sm text-red-900 mb-3">
-              <strong>Attention :</strong> Cette action supprimera définitivement tous vos cycles et paramètres enregistrés.
+              <strong>Attention :</strong> Cette action supprimera définitivement tous vos cycles et
+              paramètres enregistrés.
             </p>
             <button
               onClick={handleDeleteAllData}

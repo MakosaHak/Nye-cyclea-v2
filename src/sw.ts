@@ -1,6 +1,10 @@
 /// <reference lib="WebWorker" />
 
-import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching';
+import {
+  precacheAndRoute,
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+} from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
@@ -92,99 +96,99 @@ self.addEventListener('activate', (event) => {
 });
 
 async function checkAndNotify() {
-    try {
-        console.log('[SW] Checking notifications...');
+  try {
+    console.log('[SW] Checking notifications...');
 
-        const cycles = await StorageService.getCyclesAsync();
-        if (cycles.length === 0) {
-            console.log('[SW] No cycles found');
-            return;
-        }
-
-        const settings = await StorageService.getSettingsAsync();
-        if (!settings.notificationsOn) {
-            console.log('[SW] Notifications disabled');
-            return;
-        }
-
-        const phase = PredictionService.getCurrentPhase(cycles);
-        const prediction = PredictionService.predictNextCycle(cycles);
-
-        // Get local date in ISO format
-        const todayDate = new Date();
-        const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
-
-        // Priority 1: Predicted Period
-        const daysUntilPeriod = prediction?.predictedStart
-            ? daysBetween(todayStr, prediction.predictedStart)
-            : 100;
-
-        let title = '';
-        let body = '';
-        let shouldNotify = true;
-
-        if (daysUntilPeriod <= 3 && daysUntilPeriod >= 0) {
-            title =
-                daysUntilPeriod === 0
-                    ? "Vos règles commencent aujourd'hui"
-                    : `Règles prévues dans ${daysUntilPeriod} jour${daysUntilPeriod > 1 ? 's' : ''}`;
-            body = 'Préparez-vous, votre nouveau cycle commence bientôt. 🌸';
-        } else if (phase.phase === 'ovulation') {
-            title = `Jour ${phase.dayOfCycle} : Ovulation`;
-            body = "Pic de fertilité aujourd'hui ! 🥚✨";
-        } else {
-            const phaseNames: Record<string, string> = {
-                menstruation: 'Règles',
-                follicular: 'Phase folliculaire',
-                ovulation: 'Ovulation',
-                luteal: 'Phase lutéale',
-            };
-
-            const phaseName = phaseNames[phase.phase] || 'Cycle';
-            title = `Jour ${phase.dayOfCycle} : ${phaseName}`;
-
-            if (phase.phase === 'menstruation') body = 'Prenez soin de vous pendant cette phase. ☕';
-            else if (phase.phase === 'follicular') body = 'Votre énergie augmente progressivement. 💪';
-            else if (phase.phase === 'luteal') body = "C'est le moment de ralentir et de se relaxer. 🧘";
-            else {
-                shouldNotify = false;
-            }
-        }
-
-        if (shouldNotify) {
-            console.log('[SW] Sending notification:', title);
-
-            await self.registration.showNotification(title, {
-                body,
-                icon: '/icons/pwa-192x192.png',
-                badge: '/icons/pwa-192x192.png',
-                tag: 'cycle-daily-update',
-                renotify: true,
-                data: { url: '/' },
-                vibrate: [100, 50, 100],
-            } as any);
-        }
-    } catch (error) {
-        console.error('[SW] Notification error:', error);
+    const cycles = await StorageService.getCyclesAsync();
+    if (cycles.length === 0) {
+      console.log('[SW] No cycles found');
+      return;
     }
+
+    const settings = await StorageService.getSettingsAsync();
+    if (!settings.notificationsOn) {
+      console.log('[SW] Notifications disabled');
+      return;
+    }
+
+    const phase = PredictionService.getCurrentPhase(cycles);
+    const prediction = PredictionService.predictNextCycle(cycles);
+
+    // Get local date in ISO format
+    const todayDate = new Date();
+    const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+
+    // Priority 1: Predicted Period
+    const daysUntilPeriod = prediction?.predictedStart
+      ? daysBetween(todayStr, prediction.predictedStart)
+      : 100;
+
+    let title = '';
+    let body = '';
+    let shouldNotify = true;
+
+    if (daysUntilPeriod <= 3 && daysUntilPeriod >= 0) {
+      title =
+        daysUntilPeriod === 0
+          ? "Vos règles commencent aujourd'hui"
+          : `Règles prévues dans ${daysUntilPeriod} jour${daysUntilPeriod > 1 ? 's' : ''}`;
+      body = 'Préparez-vous, votre nouveau cycle commence bientôt. 🌸';
+    } else if (phase.phase === 'ovulation') {
+      title = `Jour ${phase.dayOfCycle} : Ovulation`;
+      body = "Pic de fertilité aujourd'hui ! 🥚✨";
+    } else {
+      const phaseNames: Record<string, string> = {
+        menstruation: 'Règles',
+        follicular: 'Phase folliculaire',
+        ovulation: 'Ovulation',
+        luteal: 'Phase lutéale',
+      };
+
+      const phaseName = phaseNames[phase.phase] || 'Cycle';
+      title = `Jour ${phase.dayOfCycle} : ${phaseName}`;
+
+      if (phase.phase === 'menstruation') body = 'Prenez soin de vous pendant cette phase. ☕';
+      else if (phase.phase === 'follicular') body = 'Votre énergie augmente progressivement. 💪';
+      else if (phase.phase === 'luteal') body = "C'est le moment de ralentir et de se relaxer. 🧘";
+      else {
+        shouldNotify = false;
+      }
+    }
+
+    if (shouldNotify) {
+      console.log('[SW] Sending notification:', title);
+
+      await self.registration.showNotification(title, {
+        body,
+        icon: '/icons/pwa-192x192.png',
+        badge: '/icons/pwa-192x192.png',
+        tag: 'cycle-daily-update',
+        renotify: true,
+        data: { url: '/' },
+        vibrate: [100, 50, 100],
+      } as any);
+    }
+  } catch (error) {
+    console.error('[SW] Notification error:', error);
+  }
 }
 
 function daysBetween(d1: string, d2: string): number {
-    const one = new Date(d1);
-    const two = new Date(d2);
-    const diff = two.getTime() - one.getTime();
-    return Math.ceil(diff / (1000 * 3600 * 24));
+  const one = new Date(d1);
+  const two = new Date(d2);
+  const diff = two.getTime() - one.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24));
 }
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event: any) => {
-    event.notification.close();
-    event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList: any) => {
-            if (clientList.length > 0) {
-                return clientList[0].focus();
-            }
-            return self.clients.openWindow('/');
-        })
-    );
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList: any) => {
+      if (clientList.length > 0) {
+        return clientList[0].focus();
+      }
+      return self.clients.openWindow('/');
+    })
+  );
 });

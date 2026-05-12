@@ -357,4 +357,85 @@ export class PredictionService {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
+
+  /**
+   * Determine the type and label for a specific date
+   */
+  static getDayInfo(
+    date: Date,
+    cycles: CycleEntry[],
+    predictions: Prediction[]
+  ): {
+    type: 'period' | 'fertile' | 'ovulation' | 'predicted-period' | 'safe' | 'normal';
+    label: string;
+  } {
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+
+    // 1. Check actual recorded cycles (Historical data)
+    for (const cycle of cycles) {
+      const start = this.parseISOLocal(cycle.startDate);
+      start.setHours(0, 0, 0, 0);
+
+      if (cycle.endDate) {
+        const end = this.parseISOLocal(cycle.endDate);
+        end.setHours(0, 0, 0, 0);
+        if (checkDate >= start && checkDate <= end) {
+          return { type: 'period', label: 'Règles' };
+        }
+      } else {
+        // Use average period length for ongoing or historical cycles without end date
+        const stats = this.calculateUserStats(cycles);
+        const estimatedEnd = new Date(start);
+        estimatedEnd.setDate(estimatedEnd.getDate() + (stats.averagePeriodLength - 1));
+        estimatedEnd.setHours(0, 0, 0, 0);
+
+        if (checkDate >= start && checkDate <= estimatedEnd) {
+          return { type: 'period', label: 'Règles' };
+        }
+      }
+    }
+
+    // 2. Check future predictions
+    for (const prediction of predictions) {
+      const pStart = this.parseISOLocal(prediction.predictedStart);
+      pStart.setHours(0, 0, 0, 0);
+      const pEnd = this.parseISOLocal(prediction.predictedEnd);
+      pEnd.setHours(0, 0, 0, 0);
+
+      // Predicted Period
+      if (checkDate >= pStart && checkDate <= pEnd) {
+        return { type: 'predicted-period', label: 'Règles prévues' };
+      }
+
+      // Ovulation
+      if (prediction.ovulationWindow) {
+        const ovStart = this.parseISOLocal(prediction.ovulationWindow[0]);
+        ovStart.setHours(0, 0, 0, 0);
+        const ovEnd = this.parseISOLocal(prediction.ovulationWindow[1]);
+        ovEnd.setHours(0, 0, 0, 0);
+        if (checkDate >= ovStart && checkDate <= ovEnd) {
+          return { type: 'ovulation', label: 'Ovulation' };
+        }
+      } else {
+        const ovulation = this.parseISOLocal(prediction.ovulationDate);
+        ovulation.setHours(0, 0, 0, 0);
+        if (checkDate.getTime() === ovulation.getTime()) {
+          return { type: 'ovulation', label: 'Ovulation' };
+        }
+      }
+
+      // Fertile Window
+      const fertileStart = this.parseISOLocal(prediction.fertileWindow[0]);
+      fertileStart.setHours(0, 0, 0, 0);
+      const fertileEnd = this.parseISOLocal(prediction.fertileWindow[1]);
+      fertileEnd.setHours(0, 0, 0, 0);
+
+      if (checkDate >= fertileStart && checkDate <= fertileEnd) {
+        return { type: 'fertile', label: 'Fenêtre fertile' };
+      }
+    }
+
+    return { type: 'safe', label: 'Jour sûr' };
+  }
 }
