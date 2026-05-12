@@ -20,7 +20,7 @@ export function SplashScreen() {
                 </div>
 
                 {/* Refined Brand Name */}
-                <h1 className="text-3xl font-light tracking-[0.2em] text-gray-800"
+                <h1 className="text-3xl font-light tracking-[0.2em] text-rose-600"
                     style={{ fontFamily: 'var(--font-brand)' }}>
                     Nye Cyclea
                 </h1>
@@ -31,11 +31,6 @@ export function SplashScreen() {
                     <div className="w-1.5 h-1.5 rounded-full bg-pink-200 animate-pulse delay-75" />
                     <div className="w-1.5 h-1.5 rounded-full bg-pink-200 animate-pulse delay-150" />
                 </div>
-            </div>
-
-            {/* Version / Bottom Tag */}
-            <div className="absolute bottom-10">
-                <span className="text-[10px] font-medium tracking-[0.3em] text-gray-300 uppercase">Version 1.2.0</span>
             </div>
         </div>
     );
