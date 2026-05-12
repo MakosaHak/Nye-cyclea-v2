@@ -182,7 +182,7 @@ export class StorageService {
     database
       .transaction([STORES.AUTH], 'readwrite')
       .objectStore(STORES.AUTH)
-      .put({ id: 'current', ...auth });
+      .put({ ...auth, id: 'current' });
   }
 
   static async clearAuth(): Promise<void> {

@@ -77,11 +77,20 @@ export default function App() {
         console.warn('Storage init failed, continuing:', e);
       }
 
+      // Check for local auth session FIRST (Offline First)
       const data = StorageService.getAuth();
       if (data) {
         setIsAuthenticated(true);
         setAuthData(data);
         setIsPremium(SubscriptionService.isPremium(data.subscriptionType));
+      } else {
+        // Optionally verify Supabase session if online, but don't force it
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          // If a session exists in supabase but not locally, perhaps re-sync?
+          // For now, respect the local state as the source of truth.
+          setIsAuthenticated(true);
+        }
       }
 
       setIsLoading(false);

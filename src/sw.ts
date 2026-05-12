@@ -69,7 +69,9 @@ try {
 
 // Immediate activation
 self.addEventListener('install', (event) => event.waitUntil(self.skipWaiting()));
-self.addEventListener('activate', (event) => event.waitUntil(clientsClaim()));
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clientsClaim() as any);
+});
 
 // Listen for Periodic Background Sync
 self.addEventListener('periodicsync' as any, (event: any) => {

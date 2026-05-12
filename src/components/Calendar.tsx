@@ -176,21 +176,23 @@ export function Calendar({ onAddCycle }: CalendarProps) {
                 return <div key={dayObj.key} className="aspect-square" />;
               }
 
+              const d = dayObj as { day: number; date: Date; isToday: boolean; type: string; label: string };
+
               return (
                 <button
                   key={dayObj.key}
-                  onClick={() => setSelectedDate(dayObj.date || null)}
-                  className={getDayClass(dayObj.type, !!dayObj.isToday)}
-                  aria-label={`Jour ${dayObj.day} du mois, ${dayObj.label}`}
+                  onClick={() => setSelectedDate(d.date || null)}
+                  className={getDayClass(d.type, !!d.isToday)}
+                  aria-label={`Jour ${d.day} du mois, ${d.label}`}
                 >
-                  <span className={`text-sm font-bold ${['period', 'ovulation'].includes(dayObj.type) ? 'text-white' : ''}`}>
-                    {dayObj.day}
+                  <span className={`text-sm font-bold ${['period', 'ovulation'].includes(d.type) ? 'text-white' : ''}`}>
+                    {d.day}
                   </span>
-                  {renderDayContent(dayObj.type)}
+                  {renderDayContent(d.type)}
                 </button>
               );
-
             })}
+
           </div>
         </div>
 

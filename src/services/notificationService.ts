@@ -69,11 +69,9 @@ export class NotificationService {
     try {
       const registration = await navigator.serviceWorker.ready;
 
-      // @ts-expect-error PeriodicSync is not yet in standard lib
       if ('periodicSync' in registration) {
         try {
-          // @ts-expect-error PeriodicSync is not yet in standard lib
-          await registration.periodicSync.register('daily-cycle-update', {
+          await (registration as any).periodicSync.register('daily-cycle-update', {
             minInterval: 24 * 60 * 60 * 1000, // 1 jour
           });
           console.log('[Notification] Periodic sync registered');

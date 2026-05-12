@@ -36,8 +36,6 @@ export function Chat() {
     return () => off();
   }, []);
 
-import React, { useState, useEffect, useRef } from 'react';
-...
   useEffect(() => {
     setMessages((prev) => {
       if (prev.length === 0) {
