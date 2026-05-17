@@ -84,11 +84,24 @@ export default function App() {
         setAuthData(data);
         setIsPremium(SubscriptionService.isPremium(data.subscriptionType));
       } else {
-        // Optionally verify Supabase session if online, but don't force it
+        // Optionally verify Supabase session if online
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session) {
-          // If a session exists in supabase but not locally, perhaps re-sync?
-          // For now, respect the local state as the source of truth.
+          const user = sessionData.session.user;
+          // Reconstruct auth data from Supabase session
+          const sub = await SubscriptionService.getSubscriptionStatus(user.id);
+          const restoredAuth: AuthData = {
+            id: user.id,
+            username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
+            isAnonymous: false,
+            createdAt: user.created_at,
+            subscriptionType: sub.subscription_type as any,
+            subscriptionExpiry: sub.subscription_expiry,
+          };
+          
+          await StorageService.setAuth(restoredAuth);
+          setAuthData(restoredAuth);
+          setIsPremium(SubscriptionService.isPremium(restoredAuth.subscriptionType));
           setIsAuthenticated(true);
         }
       }

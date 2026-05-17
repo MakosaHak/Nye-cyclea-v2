@@ -82,7 +82,10 @@ async function migrateIfNeeded(): Promise<void> {
     const database = await initDB();
     const tx = database.transaction([STORES.AUTH, STORES.CYCLES, STORES.SETTINGS], 'readwrite');
 
-    if (authData) tx.objectStore(STORES.AUTH).put({ id: 'current', ...JSON.parse(authData) });
+    if (authData) {
+      const auth = JSON.parse(authData);
+      tx.objectStore(STORES.AUTH).put({ ...auth, _id: auth.id, id: 'current' });
+    }
     if (settingsData)
       tx.objectStore(STORES.SETTINGS).put({ id: 'current', ...JSON.parse(settingsData) });
     if (cyclesData) {
@@ -144,8 +147,10 @@ async function getStoreItem<T>(storeName: string, key: string): Promise<T | null
     const request = database.transaction([storeName], 'readonly').objectStore(storeName).get(key);
     request.onsuccess = () => {
       if (!request.result) return resolve(null);
-      const { id, ...data } = request.result;
-      resolve(data as T);
+      const { id, _id, ...data } = request.result;
+      // Restore real ID if it was stored as _id
+      const finalData = _id ? { ...data, id: _id } : data;
+      resolve(finalData as T);
     };
     request.onerror = () => reject(request.error);
   });
@@ -182,7 +187,7 @@ export class StorageService {
     database
       .transaction([STORES.AUTH], 'readwrite')
       .objectStore(STORES.AUTH)
-      .put({ ...auth, id: 'current' });
+      .put({ ...auth, _id: auth.id, id: 'current' });
   }
 
   static async clearAuth(): Promise<void> {
