@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, Crown, RotateCcw, Send, Shield } from 'lucide-react';
+import { Bot, Crown, RotateCcw, Send, Shield, WifiOff } from 'lucide-react';
 import { ProBadge } from './ProBadge';
 import { useCyclesContext } from '../contexts/CyclesContext';
-import { askNyeAi, NYE_AI_SUGGESTIONS } from '../services/nyeAiService';
+import {
+  askNyeAi,
+  canUseCloudAi,
+  NYE_AI_SUGGESTIONS,
+  OFFLINE_FAQ,
+  OFFLINE_TYPED_REPLY,
+  type OfflineFaqItem,
+} from '../services/nyeAiService';
 import { StorageService } from '../services/storageService';
 import { SubscriptionService } from '../services/subscriptionService';
 import type { ChatMessage } from '../types';
@@ -16,24 +23,25 @@ function newId(): string {
     : Math.random().toString(36).slice(2);
 }
 
-function welcomeMessage(): ChatMessage {
+function welcomeMessage(cloudReady: boolean): ChatMessage {
   return {
     id: newId(),
     role: 'assistant',
-    content:
-      'Bonjour ! Je suis NyeAI, ton assistante éducative sur le cycle et le bien-être. Choisis une suggestion ci-dessous ou écris ta question — je ne remplace pas un avis médical.',
+    content: cloudReady
+      ? 'Bonjour ! Je suis NyeAI. Pose-moi ta question sur ton cycle ou ton bien-être — je ne remplace pas un avis médical.'
+      : 'Bonjour ! Je suis NyeAI. Je suis hors ligne pour le moment, mais tu peux choisir une question ci-dessous pour une réponse immédiate.',
     createdAt: new Date().toISOString(),
   };
 }
 
-function loadHistory(): ChatMessage[] {
+function loadHistory(cloudReady: boolean): ChatMessage[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [welcomeMessage()];
+    if (!raw) return [welcomeMessage(cloudReady)];
     const parsed = JSON.parse(raw) as ChatMessage[];
-    return parsed.length > 0 ? parsed : [welcomeMessage()];
+    return parsed.length > 0 ? parsed : [welcomeMessage(cloudReady)];
   } catch {
-    return [welcomeMessage()];
+    return [welcomeMessage(cloudReady)];
   }
 }
 
@@ -57,16 +65,55 @@ export function NyeAiChat() {
   const auth = StorageService.getAuth();
   const isPremium = SubscriptionService.isPremium(auth?.subscriptionType);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
+  const [networkOnline, setNetworkOnline] = useState(
+    () => typeof navigator !== 'undefined' && navigator.onLine
+  );
+  const [cloudSessionOk, setCloudSessionOk] = useState(true);
+
+  const cloudReady = canUseCloudAi(isPremium) && networkOnline && cloudSessionOk;
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(cloudReady));
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const onOnline = () => {
+      setNetworkOnline(true);
+      setCloudSessionOk(true);
+    };
+    const onOffline = () => setNetworkOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typing]);
+
+  /** Question FAQ hors ligne — réponse instantanée, sans appel réseau */
+  const pickOfflineQuestion = useCallback((item: OfflineFaqItem) => {
+    if (typing) return;
+    const userMsg: ChatMessage = {
+      id: newId(),
+      role: 'user',
+      content: item.question,
+      createdAt: new Date().toISOString(),
+    };
+    const botMsg: ChatMessage = {
+      id: newId(),
+      role: 'assistant',
+      content: item.answer,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg, botMsg]);
+  }, [typing]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -86,24 +133,21 @@ export function NyeAiChat() {
 
       try {
         const history = [...messages, userMsg];
-        const { text: reply, source, provider } = await askNyeAi(content, history, {
+        const { text: reply, cloud } = await askNyeAi(content, history, {
           isPremium,
           stats,
           cycles,
         });
 
-        let finalText = reply;
-        if (!isPremium && source === 'local') {
-          finalText = `${reply}\n\n— Réponses éducatives intégrées. Passe à Nye Cyclea Pro pour des échanges personnalisés avec l'IA en ligne.`;
+        if (!cloud && isPremium && networkOnline) {
+          setCloudSessionOk(false);
         }
 
         const botMsg: ChatMessage = {
           id: newId(),
           role: 'assistant',
-          content: finalText,
+          content: reply,
           createdAt: new Date().toISOString(),
-          source,
-          provider,
         };
         setMessages((prev) => [...prev, botMsg]);
       } catch {
@@ -112,16 +156,17 @@ export function NyeAiChat() {
           {
             id: newId(),
             role: 'assistant',
-            content: 'Désolée, un petit souci technique. Réessaie dans un instant.',
+            content: OFFLINE_TYPED_REPLY,
             createdAt: new Date().toISOString(),
           },
         ]);
+        if (isPremium) setCloudSessionOk(false);
       } finally {
         setTyping(false);
         inputRef.current?.focus();
       }
     },
-    [typing, messages, isPremium, stats, cycles]
+    [typing, messages, isPremium, stats, cycles, networkOnline]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -130,12 +175,13 @@ export function NyeAiChat() {
   };
 
   const resetChat = () => {
-    const fresh = [welcomeMessage()];
+    const fresh = [welcomeMessage(cloudReady)];
     setMessages(fresh);
+    setCloudSessionOk(true);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
   };
 
-  const showSuggestions = messages.length <= 1 && !typing;
+  const showOnlineSuggestions = cloudReady && messages.length <= 1 && !typing;
 
   return (
     <div className="flex flex-col -mx-4 -mt-2 min-h-[calc(100dvh-9rem)] max-h-[calc(100dvh-9rem)]">
@@ -143,7 +189,8 @@ export function NyeAiChat() {
       <div
         className="relative mx-4 mt-2 overflow-hidden rounded-3xl p-5 text-white shadow-xl border border-white/20 shrink-0"
         style={{
-          background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.78), rgba(236, 72, 153, 0.74), rgba(168, 85, 247, 0.7))',
+          background:
+            'linear-gradient(135deg, rgba(244, 63, 94, 0.78), rgba(236, 72, 153, 0.74), rgba(168, 85, 247, 0.7))',
           boxShadow: '0 8px 32px rgba(244, 63, 94, 0.14)',
         }}
       >
@@ -163,18 +210,10 @@ export function NyeAiChat() {
                 style={{ fontFamily: 'var(--font-brand)' }}
               >
                 NyeAI
-                {isPremium ? (
-                  <ProBadge size="sm" />
-                ) : (
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80">
-                    Mode éducatif
-                  </span>
-                )}
+                {isPremium && <ProBadge size="sm" />}
               </h1>
               <p className="text-xs text-white/90 mt-1 leading-snug">
-                {isPremium
-                  ? 'IA en ligne avec le contexte de tes cycles'
-                  : 'Questions sur ton cycle, tes règles et ton bien-être'}
+                Questions sur ton cycle, tes règles et ton bien-être
               </p>
             </div>
           </div>
@@ -192,6 +231,18 @@ export function NyeAiChat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
+        {!cloudReady && (
+          <div className="flex gap-2.5 items-start px-1">
+            <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center shrink-0">
+              <WifiOff className="w-4 h-4 text-pink-400" strokeWidth={2} />
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed pt-1.5">
+              NyeAI est hors ligne. Appuie sur une question ci-dessous pour obtenir une réponse
+              tout de suite.
+            </p>
+          </div>
+        )}
+
         {messages.map((m) => {
           const isUser = m.role === 'user';
           return (
@@ -217,23 +268,13 @@ export function NyeAiChat() {
                 >
                   {m.content}
                 </div>
-                <span className="text-[10px] text-gray-400 px-1 flex items-center gap-1.5">
-                  {formatTime(m.createdAt)}
-                  {!isUser && m.source === 'online' && (
-                    <span className="text-emerald-600/80 font-medium">
-                      IA en ligne{m.provider ? ` (${m.provider === 'gemini' ? 'Gemini' : m.provider === 'groq' ? 'Groq' : m.provider})` : ''}
-                    </span>
-                  )}
-                  {!isUser && m.source === 'local' && isPremium && (
-                    <span className="text-amber-600/80 font-medium">Mode local</span>
-                  )}
-                </span>
+                <span className="text-[10px] text-gray-400 px-1">{formatTime(m.createdAt)}</span>
               </div>
             </div>
           );
         })}
 
-        {showSuggestions && (
+        {showOnlineSuggestions && (
           <div className="flex flex-wrap gap-2 pt-1">
             {NYE_AI_SUGGESTIONS.map((s) => (
               <button
@@ -245,6 +286,26 @@ export function NyeAiChat() {
                 {s}
               </button>
             ))}
+          </div>
+        )}
+
+        {!cloudReady && !typing && (
+          <div className="space-y-2 pt-1">
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide px-1">
+              Questions disponibles hors ligne
+            </p>
+            <div className="flex flex-col gap-2">
+              {OFFLINE_FAQ.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => pickOfflineQuestion(item)}
+                  className="text-left text-sm font-medium px-4 py-3 rounded-2xl bg-white/90 border border-pink-100/90 text-pink-800 hover:bg-pink-50/80 active:scale-[0.99] transition-all shadow-sm"
+                >
+                  {item.question}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -272,8 +333,8 @@ export function NyeAiChat() {
           >
             <Crown className="w-5 h-5 text-amber-600 shrink-0" />
             <p className="text-xs text-gray-700 leading-snug">
-              <span className="font-semibold text-amber-800">Nye Cyclea Pro</span> — conversations IA
-              plus riches, avec le contexte de tes cycles.
+              <span className="font-semibold text-amber-800">Nye Cyclea Pro</span> — conversations
+              personnalisées avec le contexte de tes cycles.
             </p>
           </Link>
         </div>
@@ -290,7 +351,7 @@ export function NyeAiChat() {
             type="text"
             enterKeyHint="send"
             className="nye-ai-composer-input flex-1 h-10 py-0 px-0.5 sm:px-1 bg-transparent text-gray-800 text-[15px] leading-normal placeholder:text-gray-400 min-w-0"
-            placeholder="Pose ta question…"
+            placeholder={cloudReady ? 'Pose ta question…' : 'Hors ligne — choisis une question ci-dessus'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             autoComplete="off"

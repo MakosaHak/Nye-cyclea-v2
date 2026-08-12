@@ -51,8 +51,4 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt: string;
-  /** Présent sur les réponses assistant — online = IA cloud Pro */
-  source?: 'online' | 'local';
-  /** Fournisseur cloud : gemini | groq */
-  provider?: string;
 }

@@ -18,7 +18,7 @@
 
 ---
 
-**Dernière mise à jour :** 12 août 2026 (IA gratuite Gemini + Groq)  
+**Dernière mise à jour :** 12 août 2026 (UX NyeAI hors ligne + Gemini seul)  
 **Version app :** 0.1.0  
 **Workspace :** `C:\Users\User\Desktop\Docs\Nye_Cyclea`  
 **Développeuse / product owner :** MakosaHak — abonnement **Pro** active en test
@@ -243,11 +243,9 @@ Nye_Cyclea/
 
 | Aspect | Détail |
 |--------|--------|
-| Free | KB locale (mots-clés) dans `nyeAiService.ts` |
-| Pro | **Gemini** (principal) + **Groq** (secours) via Edge Function `chat-ai` ; fallback local si cloud down |
-| Stockage chat | `localStorage` clé `nye_ai_chat_v2` |
-| Contexte cycles | Tri DESC par `startDate` (corrigé) |
-| UI | Badge « IA en ligne » / « Mode local » sur les réponses |
+| Free | FAQ hors ligne interactive (8 questions) ; saisie libre → message hors ligne |
+| Pro + réseau | **Gemini** silencieux (aucun badge « en ligne ») |
+| Pro hors ligne / échec cloud | FAQ interactive + message explicatif |
 | UI Hero | Bot icon, badge Pro, reset conversation |
 | Suggestions | `NYE_AI_SUGGESTIONS` chips |
 | Input | `<input>` une ligne, bouton envoi rond, sans contour focus mobile |
@@ -549,6 +547,14 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 ## 16. Journal des modifications
 
 > **Ajouter ici chaque session.** Format : `YYYY-MM-DD — description`
+
+### 2026-08-12 — UX NyeAI : pas de badge « en ligne », mode hors ligne FAQ
+
+- Suppression badges « IA en ligne », « Mode local », « Gemini » dans le chat
+- Mode hors ligne : liste interactive 8 questions → réponse instantanée au tap
+- Saisie libre hors ligne : message explicatif + redirection vers la liste
+- En ligne (Pro) : Gemini silencieux, aucun texte de connexion
+- Gemini seul suffit (Groq optionnel côté serveur)
 
 ### 2026-08-12 — IA gratuite : Gemini + Groq (remplace OpenAI)
 

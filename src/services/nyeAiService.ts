@@ -10,83 +10,69 @@ RÈGLES:
 - Français simple, chaleureux, adapté au contexte africain quand c'est pertinent.
 - Réponses courtes (3 à 6 phrases sauf si l'utilisatrice demande plus de détails).`;
 
-type LocalEntry = {
-  keywords: string[];
+/** Questions-réponses instantanées quand NyeAI cloud est hors ligne */
+export type OfflineFaqItem = {
+  id: string;
+  question: string;
   answer: string;
 };
 
-/** Fallback local (mode gratuit ou si l'IA cloud est indisponible) */
-const LOCAL_KB: LocalEntry[] = [
+export const OFFLINE_FAQ: OfflineFaqItem[] = [
   {
-    keywords: ['cycle', 'durée', 'longueur', 'combien de jours'],
+    id: 'cycle-normal',
+    question: "Qu'est-ce qu'un cycle normal ?",
     answer:
       "Un cycle menstruel dure en moyenne 21 à 35 jours, avec des règles souvent entre 3 et 7 jours. Chaque corps est différent : l'important est de repérer ton propre rythme sur plusieurs mois. Tu peux suivre tes cycles dans Nye Cyclea pour voir tes moyennes.",
   },
   {
-    keywords: ['règles', 'regles', 'menstruation', 'menstruel', 'menstruelle'],
-    answer:
-      "Les règles correspondent à l'élimination de la muqueuse utérine. Des douleurs légères ou une fatigue peuvent être fréquentes. Si tu saignes très abondamment, si la douleur t'empêche de vivre normalement ou si tu te sens très mal, parle-en à un·e professionnel·le de santé.",
-  },
-  {
-    keywords: ['ovulation', 'ovulatoire', 'fertile', 'fertilité', 'fertilite'],
+    id: 'ovulation',
+    question: "Comment repérer l'ovulation ?",
     answer:
       "L'ovulation survient en général vers le milieu du cycle (souvent autour du 14e jour sur un cycle de 28 jours). La fenêtre fertile inclut quelques jours avant et le jour de l'ovulation. Les estimations dans l'app t'aident à te repérer, mais elles ne remplacent pas une contraception si tu veux éviter une grossesse.",
   },
   {
-    keywords: ['spm', 'syndrome prémenstruel', 'premenstruel', 'avant les règles'],
-    answer:
-      "Le SPM regroupe des signes avant les règles : humeur changeante, tensions, fatigue, seins sensibles… Reposer, bouger doucement, s'hydrater et noter tes symptômes peut aider. Si le SPM perturbe fortement ta vie, un·e professionnel·le peut proposer des solutions adaptées.",
-  },
-  {
-    keywords: ['douleur', 'crampes', 'mal au ventre', 'dysmenorrhee', 'dysménorrhée'],
+    id: 'crampes',
+    question: 'Crampes pendant les règles',
     answer:
       "Les crampes sont fréquentes au début des règles. Chaleur locale, repos et activité légère soulagent parfois. Évite l'automédication sans avis médical. Douleur intense, fièvre ou saignement anormal → consultation recommandée.",
   },
   {
-    keywords: ['retard', 'en retard', 'cycle irrégulier', 'irregulier', 'irrégulier'],
+    id: 'irregulier',
+    question: 'Cycle irrégulier : que faire ?',
     answer:
-      "Un retard peut venir du stress, d'un changement de rythme, d'une variation hormonale ou d'autres causes. Si tu as eu un rapport non protégé, une grossesse est une possibilité à considérer avec un test. Cycles très irréguliers sur plusieurs mois : en parler à un·e professionnel·le.",
+      "Un retard peut venir du stress, d'un changement de rythme ou d'une variation hormonale. Cycles très irréguliers sur plusieurs mois : en parler à un·e professionnel·le. Note tes cycles dans l'app pour repérer un pattern.",
   },
   {
-    keywords: ['contraception', 'pilule', 'préservatif', 'preservatif', 'protection'],
+    id: 'regles',
+    question: 'Que se passe-t-il pendant les règles ?',
     answer:
-      'Il existe plusieurs méthodes (préservatif, pilule, implant, etc.). Le choix dépend de ta santé, de ton mode de vie et de tes objectifs. Seul·e un·e professionnel·le de santé ou une sage-femme peut te conseiller la méthode la plus adaptée.',
+      "Les règles correspondent à l'élimination de la muqueuse utérine. Des douleurs légères ou une fatigue peuvent être fréquentes. Si tu saignes très abondamment ou si la douleur t'empêche de vivre normalement, parle-en à un·e professionnel·le de santé.",
   },
   {
-    keywords: ['hygiène', 'protege-slip', 'protège-slip', 'serviette', 'cup', 'coupe'],
+    id: 'spm',
+    question: 'Qu’est-ce que le SPM ?',
+    answer:
+      "Le SPM regroupe des signes avant les règles : humeur changeante, tensions, fatigue, seins sensibles… Reposer, s'hydrater et noter tes symptômes peut aider. Si le SPM perturbe fortement ta vie, un·e professionnel·le peut proposer des solutions adaptées.",
+  },
+  {
+    id: 'contraception',
+    question: 'Quelles méthodes de contraception existent ?',
+    answer:
+      'Il existe plusieurs méthodes (préservatif, pilule, implant, etc.). Le choix dépend de ta santé et de tes objectifs. Seul·e un·e professionnel·le de santé ou une sage-femme peut te conseiller la méthode la plus adaptée.',
+  },
+  {
+    id: 'hygiene',
+    question: 'Comment prendre soin de son hygiène intime ?',
     answer:
       "Change régulièrement protections ou cup, lave-toi les mains, privilégie des produits adaptés à ta peau. En cas d'odeur forte, démangeaisons ou brûlures persistantes, consulte pour écarter une infection.",
   },
-  {
-    keywords: ['grossesse', 'enceinte', 'test', 'aménorrhée', 'amenorrhee'],
-    answer:
-      'Un test de grossesse en pharmacie est fiable quelques jours après la date de règles attendue. Pour un suivi de grossesse ou des questions sur ta santé, consulte un centre de santé ou une sage-femme.',
-  },
-  {
-    keywords: ['bonjour', 'salut', 'coucou', 'hello', 'hey'],
-    answer:
-      "Coucou ! Je suis NyeAI. Pose-moi une question sur ton cycle, tes règles, l'ovulation ou le bien-être — je partage des infos éducatives. Pour un avis médical personnalisé, il faut voir un·e professionnel·le.",
-  },
 ];
 
-const FALLBACK =
-  "Je n'ai pas bien saisi ta question. Reformule avec des mots simples (ex. « crampes », « retard de règles », « ovulation »). Rappel : je donne des infos générales, pas un diagnostic. En cas de doute médical, consulte un·e professionnel·le.";
+export const OFFLINE_TYPED_REPLY =
+  "Je suis momentanément hors ligne et je ne peux pas répondre librement à ta question pour l'instant. Tu peux choisir une des questions ci-dessous : la réponse s'affichera tout de suite.";
 
-const EMERGENCY_KEYWORDS = [
-  'urgence',
-  'saignement abondant',
-  'perte de connaissance',
-  'douleur poitrine',
-  'essoufflement',
-  'fièvre très',
-  'grossesse extra',
-];
-
-function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
+export function canUseCloudAi(isPremium: boolean): boolean {
+  return isPremium && typeof navigator !== 'undefined' && navigator.onLine;
 }
 
 function sortCyclesByDateDesc(cycles: CycleEntry[]): CycleEntry[] {
@@ -95,32 +81,11 @@ function sortCyclesByDateDesc(cycles: CycleEntry[]): CycleEntry[] {
   );
 }
 
-function localAnswer(prompt: string): string {
-  const q = normalize(prompt);
-  if (EMERGENCY_KEYWORDS.some((k) => q.includes(normalize(k)))) {
-    return "Si tu penses être en danger ou en urgence médicale, contacte immédiatement les services d'urgence ou rends-toi au centre de santé le plus proche. Je ne peux pas gérer une urgence à ta place.";
-  }
-  let best: LocalEntry | null = null;
-  let bestScore = 0;
-  for (const entry of LOCAL_KB) {
-    let score = 0;
-    for (const kw of entry.keywords) {
-      if (q.includes(normalize(kw))) score += kw.length > 6 ? 2 : 1;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      best = entry;
-    }
-  }
-  if (best && bestScore > 0) return best.answer;
-  return FALLBACK;
-}
-
 function buildUserContext(stats: UserStats | null, cycles: CycleEntry[]): string {
   const sorted = sortCyclesByDateDesc(cycles);
   if (sorted.length === 0) return "Aucun cycle enregistré dans l'app pour le moment.";
   const last = sorted[0];
-  const recentLengths = sorted
+  const recentDates = sorted
     .slice(0, 3)
     .map((c) => c.startDate.slice(0, 10))
     .join(', ');
@@ -129,7 +94,7 @@ function buildUserContext(stats: UserStats | null, cycles: CycleEntry[]): string
     `Durée moyenne du cycle: ${stats?.averageCycleLength ?? '—'} jours.`,
     `Durée moyenne des règles: ${stats?.averagePeriodLength ?? '—'} jours.`,
     last?.startDate ? `Dernières règles (début): ${last.startDate.slice(0, 10)}.` : '',
-    sorted.length > 1 ? `Dates récentes de début de règles: ${recentLengths}.` : '',
+    sorted.length > 1 ? `Dates récentes de début de règles: ${recentDates}.` : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -139,12 +104,9 @@ async function askCloudAi(
   prompt: string,
   history: ChatMessage[],
   contextBlock: string
-): Promise<{ text: string; provider?: string } | null> {
+): Promise<string | null> {
   const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session) {
-    console.warn('[NyeAI] Pas de session Supabase — IA cloud indisponible');
-    return null;
-  }
+  if (!sessionData.session) return null;
 
   const recentHistory = history
     .slice(-10)
@@ -160,62 +122,35 @@ async function askCloudAi(
     },
   });
 
-  if (error) {
-    console.warn('[NyeAI] Edge function error:', error.message);
-    return null;
-  }
-
-  if (data?.error && typeof data.error === 'string') {
-    console.warn('[NyeAI] Edge function returned error:', data.error);
-    return null;
-  }
-
-  if (data?.response && typeof data.response === 'string') {
-    const provider = typeof data.provider === 'string' ? data.provider : undefined;
-    return { text: data.response.trim(), provider };
-  }
-
+  if (error || (data?.error && typeof data.error === 'string')) return null;
+  if (data?.response && typeof data.response === 'string') return data.response.trim();
   return null;
 }
 
+/** Appel cloud Gemini uniquement — sans message de statut, sans fallback local */
 export async function askNyeAi(
   prompt: string,
   history: ChatMessage[],
   options: { isPremium: boolean; stats: UserStats | null; cycles: CycleEntry[] }
-): Promise<{ text: string; source: 'online' | 'local'; provider?: string }> {
+): Promise<{ text: string; cloud: boolean }> {
   const trimmed = prompt.trim();
-  if (!trimmed) return { text: FALLBACK, source: 'local' };
+  if (!trimmed) return { text: OFFLINE_TYPED_REPLY, cloud: false };
+
+  if (!canUseCloudAi(options.isPremium)) {
+    return { text: OFFLINE_TYPED_REPLY, cloud: false };
+  }
 
   const contextBlock = buildUserContext(options.stats, options.cycles);
 
-  if (options.isPremium) {
-    try {
-      const cloudReply = await askCloudAi(trimmed, history, contextBlock);
-      if (cloudReply) {
-        return {
-          text: cloudReply.text,
-          source: 'online',
-          provider: cloudReply.provider,
-        };
-      }
-    } catch (e) {
-      console.warn('[NyeAI] Cloud IA unavailable, fallback local', e);
-    }
+  try {
+    const cloudReply = await askCloudAi(trimmed, history, contextBlock);
+    if (cloudReply) return { text: cloudReply, cloud: true };
+  } catch (e) {
+    console.warn('[NyeAI] Cloud unavailable', e);
   }
 
-  const enriched = localAnswer(trimmed);
-  if (options.cycles.length > 0 && enriched === FALLBACK) {
-    return {
-      text: `${FALLBACK}\n\nD'après ton suivi dans l'app : ${contextBlock}`,
-      source: 'local',
-    };
-  }
-  return { text: enriched, source: 'local' };
+  return { text: OFFLINE_TYPED_REPLY, cloud: false };
 }
 
-export const NYE_AI_SUGGESTIONS = [
-  "Qu'est-ce qu'un cycle normal ?",
-  "Comment repérer l'ovulation ?",
-  'Crampes pendant les règles',
-  'Cycle irrégulier : que faire ?',
-];
+/** Suggestions affichées quand l'IA cloud est disponible (Pro + réseau) */
+export const NYE_AI_SUGGESTIONS = OFFLINE_FAQ.slice(0, 4).map((item) => item.question);
