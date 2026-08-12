@@ -548,6 +548,13 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 
 > **Ajouter ici chaque session.** Format : `YYYY-MM-DD — description`
 
+### 2026-08-12 — Fix NyeAI : session Supabase + sync Pro
+
+- `ensureSupabaseSession()` avant appel Edge Function (reconnect cloud)
+- App + NyeAI : rafraîchissement statut Pro depuis `profiles` au démarrage
+- Fix inscription : `StorageService.setAuth` après signup (manquait)
+- Cause probable panne : pas la route `/chat` (NyeAI OK) — session ou function `chat-ai` non déployée
+
 ### 2026-08-12 — Script CLI deploy NyeAI
 
 - Ajout `scripts/deploy-chat-ai.ps1` (login, link, secret Gemini, deploy chat-ai)

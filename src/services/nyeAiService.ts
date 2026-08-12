@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, ensureSupabaseSession } from '../lib/supabase';
 import type { ChatMessage, CycleEntry, UserStats } from '../types';
 
 export const NYE_AI_SYSTEM_PROMPT = `Tu es NyeAI, l'assistante bienveillante de Nye Cyclea (santé menstruelle et bien-être).
@@ -105,8 +105,11 @@ async function askCloudAi(
   history: ChatMessage[],
   contextBlock: string
 ): Promise<string | null> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session) return null;
+  const hasSession = await ensureSupabaseSession();
+  if (!hasSession) {
+    console.warn('[NyeAI] Session Supabase absente — déconnecte-toi puis reconnecte-toi');
+    return null;
+  }
 
   const recentHistory = history
     .slice(-10)
@@ -122,7 +125,16 @@ async function askCloudAi(
     },
   });
 
-  if (error || (data?.error && typeof data.error === 'string')) return null;
+  if (error) {
+    console.warn('[NyeAI] Edge function chat-ai:', error.message, data);
+    return null;
+  }
+
+  if (data?.error && typeof data.error === 'string') {
+    console.warn('[NyeAI] chat-ai a répondu:', data.error);
+    return null;
+  }
+
   if (data?.response && typeof data.response === 'string') return data.response.trim();
   return null;
 }

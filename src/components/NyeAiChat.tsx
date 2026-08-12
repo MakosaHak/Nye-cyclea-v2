@@ -13,6 +13,7 @@ import {
 } from '../services/nyeAiService';
 import { StorageService } from '../services/storageService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { ensureSupabaseSession } from '../lib/supabase';
 import type { ChatMessage } from '../types';
 
 const STORAGE_KEY = 'nye_ai_chat_v2';
@@ -63,7 +64,9 @@ function BotAvatar({ className = '' }: { className?: string }) {
 export function NyeAiChat() {
   const { cycles, stats } = useCyclesContext();
   const auth = StorageService.getAuth();
-  const isPremium = SubscriptionService.isPremium(auth?.subscriptionType);
+  const [isPremium, setIsPremium] = useState(() =>
+    SubscriptionService.isPremium(auth?.subscriptionType)
+  );
 
   const [networkOnline, setNetworkOnline] = useState(
     () => typeof navigator !== 'undefined' && navigator.onLine
@@ -89,6 +92,35 @@ export function NyeAiChat() {
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  // Rafraîchir statut Pro + session Supabase à l'ouverture de NyeAI
+  useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      const localAuth = StorageService.getAuth();
+      if (!localAuth || localAuth.isAnonymous) return;
+
+      await ensureSupabaseSession();
+
+      try {
+        const sub = await SubscriptionService.getSubscriptionStatus(localAuth.id);
+        if (cancelled) return;
+        const refreshed = {
+          ...localAuth,
+          subscriptionType: sub.subscription_type as typeof localAuth.subscriptionType,
+          subscriptionExpiry: sub.subscription_expiry ?? undefined,
+        };
+        await StorageService.setAuth(refreshed);
+        setIsPremium(SubscriptionService.isPremium(refreshed.subscriptionType));
+      } catch (e) {
+        console.warn('[NyeAI] Sync subscription failed', e);
+      }
+    };
+    void sync();
+    return () => {
+      cancelled = true;
     };
   }, []);
 

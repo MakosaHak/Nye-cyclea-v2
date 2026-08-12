@@ -4,7 +4,7 @@ import { AuthData } from './types';
 import { NotificationService } from './services/notificationService';
 import { StorageService } from './services/storageService';
 import { SubscriptionService } from './services/subscriptionService';
-import { supabase } from './lib/supabase';
+import { supabase, ensureSupabaseSession } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster, toast } from 'sonner';
 import { ConfirmDialog } from './components/ConfirmDialog';
@@ -80,6 +80,24 @@ export default function App() {
         setIsAuthenticated(true);
         setAuthData(data);
         setIsPremium(SubscriptionService.isPremium(data.subscriptionType));
+
+        // Rafraîchir session Supabase + statut Pro (requis pour NyeAI cloud)
+        if (!data.isAnonymous) {
+          await ensureSupabaseSession();
+          try {
+            const sub = await SubscriptionService.getSubscriptionStatus(data.id);
+            const refreshedAuth: AuthData = {
+              ...data,
+              subscriptionType: sub.subscription_type as AuthData['subscriptionType'],
+              subscriptionExpiry: sub.subscription_expiry ?? undefined,
+            };
+            await StorageService.setAuth(refreshedAuth);
+            setAuthData(refreshedAuth);
+            setIsPremium(SubscriptionService.isPremium(refreshedAuth.subscriptionType));
+          } catch (e) {
+            console.warn('Subscription refresh failed:', e);
+          }
+        }
       } else {
         // Optionally verify Supabase session if online
         const { data: sessionData } = await supabase.auth.getSession();

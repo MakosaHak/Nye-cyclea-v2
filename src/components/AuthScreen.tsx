@@ -69,6 +69,15 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
         // Fetch initial profile (will be 'free' by default via trigger)
         const sub = await SubscriptionService.getSubscriptionStatus(data.user.id);
 
+        const authData: AuthData = {
+          id: data.user.id,
+          username,
+          isAnonymous: false,
+          createdAt: new Date().toISOString(),
+          subscriptionType: sub.subscription_type as AuthData['subscriptionType'],
+          subscriptionExpiry: sub.subscription_expiry ?? undefined,
+        };
+        await StorageService.setAuth(authData);
         onLogin();
       } else {
         const { data, error: loginError } = await supabase.auth.signInWithPassword({

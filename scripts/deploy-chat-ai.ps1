@@ -5,7 +5,9 @@
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "`n=== Nye Cyclea — Deploiement NyeAI (Gemini) ===`n" -ForegroundColor Magenta
+Write-Host ""
+Write-Host "=== Nye Cyclea - Deploiement NyeAI Gemini ===" -ForegroundColor Magenta
+Write-Host ""
 
 # Supabase CLI (npm global, avec certificats systeme si besoin)
 if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {

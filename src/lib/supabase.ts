@@ -8,3 +8,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/** Restaure la session Supabase (requise pour NyeAI cloud / Edge Functions) */
+export async function ensureSupabaseSession(): Promise<boolean> {
+  const { data: first } = await supabase.auth.getSession();
+  if (first.session) return true;
+
+  const { data: refreshed } = await supabase.auth.refreshSession();
+  return !!refreshed.session;
+}
