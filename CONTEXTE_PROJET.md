@@ -548,6 +548,11 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 
 > **Ajouter ici chaque session.** Format : `YYYY-MM-DD — description`
 
+### 2026-08-12 — Script CLI deploy NyeAI
+
+- Ajout `scripts/deploy-chat-ai.ps1` (login, link, secret Gemini, deploy chat-ai)
+- Supabase CLI installable via `NODE_OPTIONS=--use-system-ca npm install -g supabase`
+
 ### 2026-08-12 — UX NyeAI : pas de badge « en ligne », mode hors ligne FAQ
 
 - Suppression badges « IA en ligne », « Mode local », « Gemini » dans le chat

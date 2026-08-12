@@ -64,32 +64,38 @@ Les **cycles** restent **locaux** sur chaque appareil (IndexedDB).
 
 ## 8. NyeAI — Edge Function (IA gratuite Pro)
 
-NyeAI Pro utilise des IA **gratuites** (pas OpenAI) :
+NyeAI Pro utilise **Google Gemini** (gratuit).
 
-| Fournisseur | Rôle | Clé Supabase |
-|-------------|------|--------------|
-| **Google Gemini** | Principal | `GEMINI_API_KEY` |
-| **Groq** (Llama) | Secours si Gemini indisponible | `GROQ_API_KEY` |
+### Option rapide — script PowerShell (recommandé)
 
-### Étapes rapides
+```powershell
+cd C:\Users\User\Desktop\Docs\Nye_Cyclea
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\deploy-chat-ai.ps1
+```
 
-1. **Gemini** — https://aistudio.google.com/apikey → Create API key
-2. **Groq** (optionnel) — https://console.groq.com/keys → Create API key
-3. Installer CLI : `npm install -g supabase` puis `supabase login`
-4. Lier le projet : `supabase link --project-ref TON_PROJECT_REF`
-5. Secrets :
-   ```bash
-   supabase secrets set GEMINI_API_KEY=AIza...
-   supabase secrets set GROQ_API_KEY=gsk_...
-   ```
-6. Déployer : `supabase functions deploy chat-ai`
-7. Rebuild app : `npm run build` → drag-drop Netlify
+Le script : login Supabase → link projet → secret `GEMINI_API_KEY` → deploy `chat-ai`.
+
+### Option manuelle — CLI
+
+```powershell
+$env:NODE_OPTIONS="--use-system-ca"   # si erreur certificat npm
+npm install -g supabase
+supabase login
+supabase link --project-ref TON_PROJECT_REF
+supabase secrets set GEMINI_API_KEY=AIza...
+supabase functions deploy chat-ai
+```
+
+| Fournisseur | Clé Supabase |
+|-------------|--------------|
+| **Google Gemini** | `GEMINI_API_KEY` |
 
 Guide détaillé : `supabase/functions/chat-ai/README.md`
 
 **Comportement :**
-- **Gratuit** → FAQ locale dans `nyeAiService.ts`
-- **Pro** → Gemini (puis Groq en secours) + contexte cycles ; fallback local si tout échoue
+- **Gratuit** → FAQ hors ligne interactive
+- **Pro** → Gemini silencieux ; mode hors ligne si indisponible
 
 ---
 
