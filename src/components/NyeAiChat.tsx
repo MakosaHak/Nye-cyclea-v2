@@ -94,7 +94,7 @@ export function NyeAiChat() {
 
         let finalText = reply;
         if (!isPremium && source === 'local') {
-          finalText = `${reply}\n\n— Réponses éducatives intégrées. Passe à Nye Cyclea Pro pour des échanges plus personnalisés avec l’IA en ligne.`;
+          finalText = `${reply}\n\n— Réponses éducatives intégrées. Passe à Nye Cyclea Pro pour des échanges personnalisés avec l'IA en ligne.`;
         }
 
         const botMsg: ChatMessage = {
@@ -102,6 +102,7 @@ export function NyeAiChat() {
           role: 'assistant',
           content: finalText,
           createdAt: new Date().toISOString(),
+          source,
         };
         setMessages((prev) => [...prev, botMsg]);
       } catch {
@@ -170,7 +171,9 @@ export function NyeAiChat() {
                 )}
               </h1>
               <p className="text-xs text-white/90 mt-1 leading-snug">
-                Questions sur ton cycle, tes règles et ton bien-être
+                {isPremium
+                  ? 'IA en ligne avec le contexte de tes cycles'
+                  : 'Questions sur ton cycle, tes règles et ton bien-être'}
               </p>
             </div>
           </div>
@@ -213,7 +216,15 @@ export function NyeAiChat() {
                 >
                   {m.content}
                 </div>
-                <span className="text-[10px] text-gray-400 px-1">{formatTime(m.createdAt)}</span>
+                <span className="text-[10px] text-gray-400 px-1 flex items-center gap-1.5">
+                  {formatTime(m.createdAt)}
+                  {!isUser && m.source === 'online' && (
+                    <span className="text-emerald-600/80 font-medium">IA en ligne</span>
+                  )}
+                  {!isUser && m.source === 'local' && isPremium && (
+                    <span className="text-amber-600/80 font-medium">Mode local</span>
+                  )}
+                </span>
               </div>
             </div>
           );

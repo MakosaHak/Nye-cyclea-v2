@@ -1,22 +1,16 @@
 import { CycleEntry, UserSettings, AuthData } from '../types';
 
-interface KBEntry {
-  id: string;
-  category?: string;
-  keywords?: string[];
-  answer?: string;
-}
-
 const DB_NAME = 'menstrual_cycle_app';
-const DB_VERSION = 2; // Incremented version to add chat stores
+const DB_VERSION = 3; // v3: suppression stores chat legacy (knowledge_base, fallback_messages)
 
 const STORES = {
   AUTH: 'auth',
   CYCLES: 'cycles',
   SETTINGS: 'settings',
-  KB: 'knowledge_base',
-  FALLBACK: 'fallback_messages',
 };
+
+/** Stores IndexedDB de l'ancien chat — supprimés à la migration v3 */
+const LEGACY_CHAT_STORES = ['knowledge_base', 'fallback_messages'];
 
 // In-memory cache for synchronous access
 const cache = {
@@ -59,13 +53,11 @@ async function initDB(): Promise<IDBDatabase> {
         database.createObjectStore(STORES.SETTINGS, { keyPath: 'id' });
       }
 
-      // Chat Data Stores (migrated from female_health_bot DB)
-      if (!database.objectStoreNames.contains(STORES.KB)) {
-        const kbStore = database.createObjectStore(STORES.KB, { keyPath: 'id' });
-        kbStore.createIndex('category', 'category', { unique: false });
-      }
-      if (!database.objectStoreNames.contains(STORES.FALLBACK)) {
-        database.createObjectStore(STORES.FALLBACK, { keyPath: 'id' });
+      // Migration v3 : retirer les stores de l'ancien chat (female_health_bot)
+      for (const legacyStore of LEGACY_CHAT_STORES) {
+        if (database.objectStoreNames.contains(legacyStore)) {
+          database.deleteObjectStore(legacyStore);
+        }
       }
     };
   });
@@ -275,36 +267,6 @@ export class StorageService {
     };
   }
 
-  // --- Chat & Knowledge Base ---
-  static async initChatDB(initialData: KBEntry[]): Promise<void> {
-    const database = await initDB();
-
-    // Check if data already exists to avoid redundant writes
-    const existing = await getStoreAll<KBEntry>(STORES.KB);
-    if (existing.length > 0) return;
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([STORES.KB, STORES.FALLBACK], 'readwrite');
-      const kbStore = tx.objectStore(STORES.KB);
-      const fbStore = tx.objectStore(STORES.FALLBACK);
-
-      initialData.forEach((entry) => kbStore.put(entry));
-      fbStore.put({ id: 'fb_01', message: 'Je ne comprends pas. Peux-tu reformuler ?' });
-
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  static async searchChatKB(): Promise<KBEntry[]> {
-    return getStoreAll<KBEntry>(STORES.KB);
-  }
-
-  static async getChatFallback(): Promise<string> {
-    const item = await getStoreItem<{ message: string }>(STORES.FALLBACK, 'fb_01');
-    return item?.message || 'Je ne comprends pas. Peux-tu reformuler ?';
-  }
-
   // --- Maintenance ---
   static async clearAllData(): Promise<void> {
     cache.auth = null;
@@ -315,18 +277,14 @@ export class StorageService {
       localStorage.removeItem('menstrual_app_auth');
       localStorage.removeItem('menstrual_app_cycles');
       localStorage.removeItem('menstrual_app_settings');
+      localStorage.removeItem('nye_ai_chat_v2');
     }
 
     const database = await initDB();
-    const tx = database.transaction(
-      [STORES.AUTH, STORES.CYCLES, STORES.SETTINGS, STORES.KB, STORES.FALLBACK],
-      'readwrite'
-    );
+    const tx = database.transaction([STORES.AUTH, STORES.CYCLES, STORES.SETTINGS], 'readwrite');
     tx.objectStore(STORES.AUTH).clear();
     tx.objectStore(STORES.CYCLES).clear();
     tx.objectStore(STORES.SETTINGS).clear();
-    tx.objectStore(STORES.KB).clear();
-    tx.objectStore(STORES.FALLBACK).clear();
   }
 
   static exportData(): string {

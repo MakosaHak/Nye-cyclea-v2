@@ -18,7 +18,7 @@
 
 ---
 
-**Dernière mise à jour :** 12 août 2026  
+**Dernière mise à jour :** 12 août 2026 (session nettoyage chat legacy + IA cloud)  
 **Version app :** 0.1.0  
 **Workspace :** `C:\Users\User\Desktop\Docs\Nye_Cyclea`  
 **Développeuse / product owner :** MakosaHak — abonnement **Pro** active en test
@@ -160,13 +160,13 @@ L’app utilise **`HashRouter`** (`main.tsx`), pas `BrowserRouter`.
 
 ### 3.3 IndexedDB — `StorageService`
 
-- **Nom DB :** `menstrual_cycle_app` (version 2)
+- **Nom DB :** `menstrual_cycle_app` (version **3**)
 - **Stores :**
   - `auth` — session utilisatrice locale
   - `cycles` — entrées de cycle (index `startDate`)
   - `settings` — préférences
-  - `knowledge_base`, `fallback_messages` — **legacy chat** (plus utilisé par NyeAI v2, code mort partiel)
 
+- **Supprimé en v3 :** stores `knowledge_base` et `fallback_messages` (ancien chat `female_health_bot`)
 - **Cache mémoire** synchronisé pour accès sync (`getAuth()`, `getCycles()`)
 - Migration depuis localStorage v1 incluse
 
@@ -177,7 +177,7 @@ L’app utilise **`HashRouter`** (`main.tsx`), pas `BrowserRouter`.
 - `Prediction` — prochaines règles, ovulation, fenêtre fertile, ranges incertitude
 - `UserSettings` — notifications, durées par défaut, privacy
 - `AuthData` — id, username, subscriptionType, isAnonymous
-- `ChatMessage` — messages NyeAI (user | assistant)
+- `ChatMessage` — messages NyeAI (user | assistant, `source?: online | local`)
 
 ---
 
@@ -197,6 +197,9 @@ Nye_Cyclea/
 │   ├── services/        # Logique métier
 │   ├── lib/supabase.ts  # Client Supabase
 │   └── types/           # TypeScript interfaces
+├── supabase/
+│   ├── config.toml
+│   └── functions/chat-ai/   # Edge Function OpenAI (Pro)
 ├── build/               # Sortie production (gitignored) — drag Netlify
 ├── netlify.toml         # Config build Netlify (si connexion Git)
 ├── DEPLOY.md            # Guide déploiement
@@ -240,10 +243,11 @@ Nye_Cyclea/
 
 | Aspect | Détail |
 |--------|--------|
+| Free | KB locale (mots-clés) dans `nyeAiService.ts` |
+| Pro | OpenAI via Edge Function `chat-ai` + contexte cycles ; fallback local si cloud down |
 | Stockage chat | `localStorage` clé `nye_ai_chat_v2` |
-| Free | KB locale ~10 sujets FR, mots-clés, garde-fous urgence |
-| Pro | `supabase.functions.invoke('chat-ai')` → fallback local si échec |
-| Contexte envoyé | stats + nb cycles (bug : `cycles[0]` non trié) |
+| Contexte cycles | Tri DESC par `startDate` (corrigé) |
+| UI | Badge « IA en ligne » / « Mode local » sur les réponses |
 | UI Hero | Bot icon, badge Pro, reset conversation |
 | Suggestions | `NYE_AI_SUGGESTIONS` chips |
 | Input | `<input>` une ligne, bouton envoi rond, sans contour focus mobile |
@@ -445,22 +449,23 @@ Voir `DEPLOY.md` pour détails.
 | Composant | Réalité technique |
 |-----------|-------------------|
 | NyeAI Free | Matching mots-clés + FAQ statique |
-| NyeAI Pro | LLM via Edge Function **si déployée** (absente du repo) |
+| NyeAI Pro | LLM OpenAI via `supabase/functions/chat-ai` — **à déployer** sur Supabase |
 | Dashboard « Analyse IA » | Statistiques + seuils (variance, tendances) |
 | PredictionService | Algorithmes cycles (sigma, moyennes) — pas ML |
 
 ### Ce qui MANQUE (demande product owner)
 
-- [ ] Edge Function `chat-ai` versionnée + déployée Supabase
+- [ ] **Déployer** Edge Function `chat-ai` sur Supabase + secret `OPENAI_API_KEY`
 - [ ] Analyse **LLM** cycles irréguliers temps réel dans Espace Santé
-- [ ] Contexte cycles **triés** dans prompts NyeAI
-- [ ] UI badge « Réponse locale » vs « IA en ligne »
 - [ ] Streaming chat
 - [ ] Commentaire IA dans export PDF
 
-### Bug connu IA
+### Résolu (12 août 2026)
 
-`nyeAiService.buildUserContext()` : utilise `cycles[0]` sans tri par date → « dernier cycle » souvent incorrect.
+- ✅ Edge Function `chat-ai` **versionnée dans le repo** (`supabase/functions/chat-ai/`)
+- ✅ Contexte cycles **triés** dans `buildUserContext()`
+- ✅ UI badge « IA en ligne » vs « Mode local »
+- ✅ Suppression code chat legacy (IndexedDB KB, `SplashScreen.tsx`)
 
 ---
 
@@ -475,7 +480,7 @@ Voir `DEPLOY.md` pour détails.
 | PWA installable | ✅ Fait | |
 | Notifications | ⚠️ Partiel | Permission + SW |
 | NyeAI chat local | ✅ Fait | |
-| NyeAI cloud Pro | ⚠️ Partiel | Dépend Edge Function |
+| NyeAI cloud Pro | ⚠️ Partiel | Code + Edge Function prêts — **déploiement Supabase requis** |
 | Espace Santé analyse | ✅ Fait | Heuristiques |
 | Espace Santé historique | ✅ Fait | |
 | Export PDF Pro | ✅ Fait | Refonte calendrier |
@@ -484,10 +489,10 @@ Voir `DEPLOY.md` pour détails.
 | Sync cycles cloud | ❌ Non fait | Volontairement local |
 | Sync multi-appareils | ❌ Non fait | |
 | Import/export JSON | ⚠️ Partiel | Pro, reload après import |
-| Splash screen démarrage | ❌ Retiré | Loading spinner |
+| Splash screen démarrage | ❌ Retiré | Loading spinner ; `SplashScreen.tsx` supprimé |
 | Ancien Chat.tsx | ❌ Supprimé | Remplacé NyeAI |
+| Chat IndexedDB legacy | ❌ Supprimé | DB v3, stores KB retirés |
 | Tests unitaires complets | ❌ Non fait | 2 fichiers seulement |
-| Chat IndexedDB legacy | ❌ Orphelin | Stores KB inutilisés |
 
 ---
 
@@ -504,7 +509,7 @@ Voir `DEPLOY.md` pour détails.
 | Sécurité & données | 14/20 |
 | IA réelle vs affichée | 14/25 |
 
-Dettes majeures : reload(), IA cloud absente du repo, tests insuffisants, paiement mock.
+Dettes majeures : reload(), déploiement Edge Function sur Supabase, tests insuffisants, paiement mock.
 
 ---
 
@@ -527,17 +532,15 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 
 ### P0 — Avant mise en prod v2
 - [ ] Déployer staging Netlify (drag-drop) + tester auth Pro
-- [ ] Vérifier Edge Function `chat-ai` en production Supabase
-- [ ] Corriger `buildUserContext` (tri cycles DESC)
+- [ ] **Déployer** Edge Function `chat-ai` sur Supabase + configurer `OPENAI_API_KEY`
+- [ ] Tester NyeAI Pro : réponses « IA en ligne » (pas « Mode local »)
 
 ### P1 — Produit
 - [ ] Intégration paiement réelle (Stripe / Mobile Money — à décider)
 - [ ] IA analyse irrégularités LLM dans DashboardAnalytique (Pro)
-- [ ] Indicateur UI source réponse NyeAI
 
 ### P2 — Qualité
 - [ ] Remplacer `window.location.reload()` par refresh CyclesContext
-- [ ] Nettoyer stores IndexedDB chat legacy
 - [ ] Tests cycleAnalysisService, nyeAiService, pdfService
 - [ ] Fusion v2 validée → déploiement domaine principal
 
@@ -546,6 +549,20 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 ## 16. Journal des modifications
 
 > **Ajouter ici chaque session.** Format : `YYYY-MM-DD — description`
+
+### 2026-08-12 — Nettoyage chat legacy + IA cloud NyeAI
+
+**Suppression ancien chat :**
+- Retrait `initChatDB`, `searchChatKB`, `getChatFallback` de `storageService.ts`
+- IndexedDB v3 : suppression stores `knowledge_base` / `fallback_messages`
+- Suppression `SplashScreen.tsx` (non utilisé)
+- `clearAllData()` efface aussi `nye_ai_chat_v2`
+
+**IA réelle Pro :**
+- Nouvelle Edge Function `supabase/functions/chat-ai/index.ts` (OpenAI, vérif Pro via `profiles`)
+- `nyeAiService.ts` : historique conversation, contexte cycles trié, appel cloud amélioré
+- UI : badge « IA en ligne » / « Mode local » sur les réponses assistant
+- Guide déploiement dans `DEPLOY.md` §8 et `supabase/functions/chat-ai/README.md`
 
 ### 2026-08-12 — Enrichissement CONTEXTE_PROJET.md
 - Document réécrit en profondeur (stack, architecture, pages, matrice features)

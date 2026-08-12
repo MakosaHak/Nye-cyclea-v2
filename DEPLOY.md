@@ -62,6 +62,30 @@ npm run dev      # développement local
 Avec les **mêmes** clés Supabase : les comptes vont dans la **même** base auth.  
 Les **cycles** restent **locaux** sur chaque appareil (IndexedDB).
 
-## 8. Mise en prod (quand le test est validé)
+## 8. NyeAI — Edge Function (IA réelle Pro)
+
+Pour activer les **vraies réponses IA** (OpenAI) pour les abonnées Pro :
+
+1. Créer une clé API sur [OpenAI](https://platform.openai.com/)
+2. Dans Supabase → **Edge Functions → Secrets** :
+   - `OPENAI_API_KEY=sk-...`
+   - (optionnel) `OPENAI_MODEL=gpt-4o-mini`
+3. Déployer la function depuis le repo :
+
+```bash
+supabase login
+supabase link --project-ref VOTRE_PROJECT_REF
+supabase functions deploy chat-ai
+```
+
+Voir `supabase/functions/chat-ai/README.md` pour le détail.
+
+**Comportement :**
+- **Gratuit** → FAQ locale (mots-clés) dans `nyeAiService.ts`
+- **Pro** → appel `chat-ai` avec historique + contexte cycles ; fallback local si cloud indisponible
+
+---
+
+## 9. Mise en prod (quand le test est validé)
 
 Mettre à jour le site Netlify lié au **domaine principal** (merge ou déploiement depuis la branche stable), sans supprimer le site de test.

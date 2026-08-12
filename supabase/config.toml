@@ -1,0 +1,5 @@
+# Configuration Supabase locale / déploiement Edge Functions
+# Docs: https://supabase.com/docs/guides/functions
+
+[functions.chat-ai]
+verify_jwt = true
