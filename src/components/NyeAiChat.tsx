@@ -165,7 +165,7 @@ export function NyeAiChat() {
 
       try {
         const history = [...messages, userMsg];
-        const { text: reply, cloud } = await askNyeAi(content, history, {
+        const { text: reply, cloud, failReason } = await askNyeAi(content, history, {
           isPremium,
           stats,
           cycles,
@@ -182,6 +182,10 @@ export function NyeAiChat() {
           createdAt: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, botMsg]);
+
+        if (failReason === 'session' && isPremium) {
+          setCloudSessionOk(false);
+        }
       } catch {
         setMessages((prev) => [
           ...prev,

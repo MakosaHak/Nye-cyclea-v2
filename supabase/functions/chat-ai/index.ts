@@ -33,7 +33,13 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 }
 
 function isPremium(subscriptionType: string | null | undefined, expiry: string | null | undefined): boolean {
-  if (subscriptionType !== 'monthly' && subscriptionType !== 'yearly') return false;
+  if (
+    subscriptionType !== 'monthly' &&
+    subscriptionType !== 'yearly' &&
+    subscriptionType !== 'pro'
+  ) {
+    return false;
+  }
   if (!expiry) return true;
   return new Date(expiry) > new Date();
 }
@@ -70,7 +76,7 @@ async function callGemini(
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY manquante');
 
-  const model = Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash';
+  const model = Deno.env.get('GEMINI_MODEL') || 'gemini-1.5-flash';
 
   const contents: { role: string; parts: { text: string }[] }[] = [];
 

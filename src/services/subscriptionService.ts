@@ -20,6 +20,10 @@ export class SubscriptionService {
   }
 
   static isPremium(subscriptionType: string | undefined): boolean {
-    return subscriptionType === 'monthly' || subscriptionType === 'yearly';
+    return (
+      subscriptionType === 'monthly' ||
+      subscriptionType === 'yearly' ||
+      subscriptionType === 'pro'
+    );
   }
 }

@@ -42,7 +42,7 @@ export interface AuthData {
   email?: string;
   isAnonymous: boolean;
   createdAt: string;
-  subscriptionType?: 'free' | 'monthly' | 'yearly';
+  subscriptionType?: 'free' | 'monthly' | 'yearly' | 'pro';
   subscriptionExpiry?: string;
 }
 
