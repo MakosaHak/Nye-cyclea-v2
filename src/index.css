@@ -51,6 +51,34 @@ body {
   border-radius: 24px;
 }
 
+/* NyeAI — pas de contour système au focus (mobile Safari / Chrome) */
+.nye-ai-composer,
+.nye-ai-composer:focus,
+.nye-ai-composer:focus-within,
+.nye-ai-composer:focus-visible {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nye-ai-composer .nye-ai-composer-input,
+.nye-ai-composer .nye-ai-composer-input:focus,
+.nye-ai-composer .nye-ai-composer-input:focus-visible,
+.nye-ai-composer .nye-ai-composer-input:active {
+  outline: none !important;
+  outline-width: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-focus-ring-color: transparent;
+  background-color: transparent !important;
+}
+
+.nye-ai-composer:focus-within {
+  outline: none !important;
+}
+
 /* Glass nav utility */
 .glass-nav {
   background: rgba(255, 255, 255, 0.8);

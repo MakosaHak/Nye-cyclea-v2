@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modélisation Nye Cyclea — PDF</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #fdf2f8;
+      color: #1f2937;
+    }
+
+    /* ── Écran initial : uniquement le bouton ── */
+    .download-bar {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: linear-gradient(135deg, #fff5f7, #fce7f3, #fbcfe8);
+    }
+
+    .download-bar.hidden { display: none; }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 48px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #f43f5e, #ec4899);
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(244, 63, 94, 0.4);
+    }
+
+    .btn-download:disabled { opacity: 0.6; cursor: wait; }
+    .btn-download svg { width: 24px; height: 24px; fill: currentColor; }
+
+    .hint {
+      font-size: 0.85rem;
+      color: #9d174d;
+      max-width: 320px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── Overlay de chargement ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(255, 245, 247, 0.95);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .loading-overlay.show { display: flex; }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #fbcfe8;
+      border-top-color: #f43f5e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 1rem;
+      color: #be185d;
+      font-weight: 600;
+    }
+
+    /* ── Contenu document (caché tant qu'on n'exporte pas) ── */
+    #pdf-content {
+      display: none;
+      width: 794px;
+      background: #fff;
+      margin: 0 auto;
+    }
+
+    #pdf-content.exporting {
+      display: block;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 5000;
+    }
+
+    .cover {
+      text-align: center;
+      padding: 80px 40px 60px;
+      background: linear-gradient(180deg, #fff5f7, #fff 50%);
+    }
+
+    .cover-logo { font-size: 48px; margin-bottom: 24px; }
+
+    .cover h1 {
+      font-size: 28px;
+      color: #be185d;
+      margin-bottom: 16px;
+      line-height: 1.35;
+    }
+
+    .cover h2 {
+      font-size: 18px;
+      color: #6b7280;
+      font-weight: 400;
+      margin-bottom: 40px;
+      line-height: 1.4;
+    }
+
+    .cover-meta { font-size: 14px; color: #6b7280; line-height: 2; }
+    .cover-meta strong { color: #374151; }
+
+    .pdf-section {
+      padding: 40px 48px;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    h2.section-title {
+      font-size: 20px;
+      color: #be185d;
+      border-bottom: 2px solid #fbcfe8;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+
+    p, li {
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      color: #374151;
+    }
+
+    .diagram-block {
+      margin: 16px 0;
+      padding: 12px;
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .diagram-block img.diagram-img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    th { background: #fdf2f8; color: #9d174d; }
+
+    .legend {
+      font-size: 11px;
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .badge-ok { background: #d1fae5; color: #065f46; }
+    .badge-wip { background: #fef3c7; color: #92400e; }
+
+    .footer-note {
+      font-size: 11px;
+      color: #9ca3af;
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    /* Impression navigateur (fallback fiable) */
+    @media print {
+      body { background: #fff; }
+      .download-bar, .loading-overlay { display: none !important; }
+      #pdf-content {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+      }
+      .pdf-section { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="download-bar" id="download-bar">
+    <button class="btn-download" id="btn-download" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 16l-4-4h3V4h2v8h3l-4 4zm-7 4h14v2H5v-2z"/></svg>
+      Télécharger le PDF
+    </button>
+    <p class="hint">Génère le document complet avec les 10 diagrammes UML du projet Nye Cyclea.</p>
+  </div>
+
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <p class="loading-text" id="loading-text">Préparation…</p>
+  </div>
+
+  <div id="pdf-content">
+
+    <div class="cover pdf-section" data-page="cover">
+      <div class="cover-logo">🌸</div>
+      <h1>Modélisation UML &amp; Architecture<br>du Projet Nye Cyclea</h1>
+      <h2>Application PWA de suivi du cycle menstruel<br>avec analyse des cycles irréguliers</h2>
+      <div class="cover-meta">
+        <p><strong>Projet :</strong> Nye Cyclea v0.1.0</p>
+        <p><strong>Stack :</strong> React 18 · TypeScript · Vite · IndexedDB · Supabase</p>
+        <p><strong>Document :</strong> Diagrammes de conception — Mémoire de fin d'études</p>
+        <p><strong>Date :</strong> Juin 2026</p>
+      </div>
+    </div>
+
+    <div class="pdf-section" data-page="1">
+      <h2 class="section-title">1. Diagramme de contexte (niveau système)</h2>
+      <p>Vue d'ensemble des acteurs et systèmes externes interagissant avec Nye Cyclea.</p>
+      <div class="diagram-block" data-diagram="contexte"></div>
+    </div>
+
+    <div class="pdf-section" data-page="2">
+      <h2 class="section-title">2. Diagramme de cas d'utilisation</h2>
+      <div class="diagram-block" data-diagram="usecase"></div>
+      <p class="legend">UC11 : chatbot codé, intégration navigation à finaliser. UC12 : tableau de bord IA à finaliser.</p>
+    </div>
+
+    <div class="pdf-section" data-page="3">
+      <h2 class="section-title">3. Diagramme de classes</h2>
+      <div class="diagram-block" data-diagram="classes"></div>
+    </div>
+
+    <div class="pdf-section" data-page="4">
+      <h2 class="section-title">4. Diagramme entité-relation (IndexedDB)</h2>
+      <p>Base locale : <strong>menstrual_cycle_app</strong> (version 2)</p>
+      <div class="diagram-block" data-diagram="er"></div>
+    </div>
+
+    <div class="pdf-section" data-page="5">
+      <h2 class="section-title">5. Diagramme de composants (architecture)</h2>
+      <div class="diagram-block" data-diagram="composants"></div>
+    </div>
+
+    <div class="pdf-section" data-page="6" >
+      <h2 class="section-title">6. Séquence — Enregistrement d'un cycle</h2>
+      <div class="diagram-block" data-diagram="seq-cycle"></div>
+    </div>
+
+    <div class="pdf-section" data-page="7">
+      <h2 class="section-title">7. Séquence — Chatbot hybride</h2>
+      <div class="diagram-block" data-diagram="seq-chat"></div>
+    </div>
+
+    <div class="pdf-section" data-page="8">
+      <h2 class="section-title">8. Séquence — Analyse IA cycle irrégulier</h2>
+      <p class="legend">Fonctionnalité à finaliser pour la soutenance.</p>
+      <div class="diagram-block" data-diagram="seq-ia"></div>
+    </div>
+
+    <div class="pdf-section" data-page="9">
+      <h2 class="section-title">9. Diagramme d'activité — Flux principal</h2>
+      <div class="diagram-block" data-diagram="activite"></div>
+    </div>
+
+    <div class="pdf-section" data-page="10">
+      <h2 class="section-title">10. Diagramme de déploiement</h2>
+      <div class="diagram-block" data-diagram="deploiement"></div>
+    </div>
+
+    <div class="pdf-section" data-page="11">
+      <h2 class="section-title">11. Tableau récapitulatif</h2>
+      <table>
+        <thead>
+          <tr><th>Diagramme</th><th>Objectif</th><th>Statut</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Contexte</td><td>Situer le système dans son environnement</td><td><span class="badge badge-ok">Fidèle au code</span></td></tr>
+          <tr><td>Cas d'utilisation</td><td>Fonctionnalités utilisatrice</td><td><span class="badge badge-ok">Complet</span></td></tr>
+          <tr><td>Classes</td><td>Structure objet du système</td><td><span class="badge badge-ok">Fidèle au code</span></td></tr>
+          <tr><td>Entité-Relation</td><td>Modèle IndexedDB</td><td><span class="badge badge-ok">Fidèle au code</span></td></tr>
+          <tr><td>Composants</td><td>Architecture en couches</td><td><span class="badge badge-ok">Fidèle au code</span></td></tr>
+          <tr><td>Séquence (cycle)</td><td>Flux d'enregistrement</td><td><span class="badge badge-ok">Implémenté</span></td></tr>
+          <tr><td>Séquence (chatbot)</td><td>Flux conversationnel hybride</td><td><span class="badge badge-wip">Intégration nav</span></td></tr>
+          <tr><td>Séquence (IA)</td><td>Analyse cycles irréguliers</td><td><span class="badge badge-wip">À finaliser</span></td></tr>
+          <tr><td>Activité</td><td>Parcours utilisateur global</td><td><span class="badge badge-ok">Complet</span></td></tr>
+          <tr><td>Déploiement</td><td>Infrastructure technique</td><td><span class="badge badge-ok">PWA + Supabase</span></td></tr>
+        </tbody>
+      </table>
+      <div class="footer-note">Nye Cyclea · Modélisation UML · Mémoire de fin d'études · Juin 2026</div>
+    </div>
+
+  </div>
+
+  <!-- Sources Mermaid (cachées, utilisées pour le rendu) -->
+  <script type="text/plain" id="src-contexte">
+flowchart TB
+    U[Utilisatrice] --> APP[Nye Cyclea PWA]
+    M[Professionnel sante] -.-> APP
+    APP --> SB[Supabase Auth]
+    APP --> IA[API Intelligence Artificielle]
+    APP --> IDB[(IndexedDB)]
+    APP --> SW[Service Worker]
+  </script>
+
+  <script type="text/plain" id="src-usecase">
+flowchart TB
+    U((Utilisatrice)) --> UC1[Se connecter]
+    U --> UC2[Enregistrer cycle]
+    U --> UC3[Tableau de bord]
+    U --> UC4[Calendrier]
+    U --> UC5[Historique]
+    U --> UC11[Chatbot Nye]
+    U --> UC12[Analyse IA irregulier]
+    SYS((Systeme)) --> UC6[Predictions]
+  </script>
+
+  <script type="text/plain" id="src-classes">
+classDiagram
+    class CycleEntry {
+        +id userId
+        +startDate endDate
+    }
+    class Prediction {
+        +predictedStart
+        +confidence
+    }
+    class PredictionService {
+        +calculateUserStats()
+        +predictNextCycle()
+    }
+    class StorageService {
+        +getCycles()
+        +addCycle()
+    }
+    class CyclesContext {
+        +cycles stats
+    }
+    CyclesContext --> StorageService
+    CyclesContext --> PredictionService
+    PredictionService ..> CycleEntry
+    PredictionService ..> Prediction
+  </script>
+
+  <script type="text/plain" id="src-er">
+erDiagram
+    AUTH ||--o{ CYCLES : possede
+    AUTH {
+        string id PK
+        string username
+    }
+    CYCLES {
+        string id PK
+        string userId FK
+        string startDate
+    }
+    SETTINGS {
+        string id PK
+        int defaultCycleLength
+    }
+    KNOWLEDGE_BASE {
+        string id PK
+        string question
+        string answer
+    }
+  </script>
+
+  <script type="text/plain" id="src-composants">
+flowchart TB
+    DASH[Dashboard] --> CTX[CyclesContext]
+    CAL[Calendar] --> CTX
+    CHAT[Chat] --> CSEARCH[ChatSearchService]
+    CTX --> STOR[StorageService]
+    CTX --> PRED[PredictionService]
+    STOR --> IDB[(IndexedDB)]
+  </script>
+
+  <script type="text/plain" id="src-seq-cycle">
+sequenceDiagram
+    participant U as Utilisatrice
+    participant ADD as AddCycle
+    participant CTX as CyclesContext
+    participant STOR as StorageService
+    participant PRED as PredictionService
+    U->>ADD: Saisit cycle
+    ADD->>CTX: addCycle
+    CTX->>STOR: persistance
+    CTX->>PRED: predictions
+    PRED-->>U: Dashboard mis a jour
+  </script>
+
+  <script type="text/plain" id="src-seq-chat">
+sequenceDiagram
+    participant U as Utilisatrice
+    participant CHAT as Chat
+    participant SAFE as SafetyService
+    participant SEARCH as SearchService
+    participant AI as ChatAiService
+    U->>CHAT: Question
+    CHAT->>SAFE: verification
+    CHAT->>SEARCH: recherche locale
+    alt Premium online
+        CHAT->>AI: reponse IA
+    end
+    CHAT-->>U: Reponse securisee
+  </script>
+
+  <script type="text/plain" id="src-seq-ia">
+sequenceDiagram
+    participant U as Utilisatrice
+    participant DASH as DashboardIA
+    participant PRED as PredictionService
+    participant AI as API IA
+    U->>DASH: Ouvre dashboard
+    DASH->>PRED: stats cycles
+    alt Cycle irregulier
+        DASH->>AI: analyse
+        AI-->>U: Rapport personnalise
+    end
+  </script>
+
+  <script type="text/plain" id="src-activite">
+flowchart TD
+    A[Demarrage] --> B{Session?}
+    B -->|Non| C[Auth]
+    B -->|Oui| D[Charger cycles]
+    C --> D
+    D --> E[Predictions]
+    E --> F[Dashboard]
+    F --> G{Ajouter cycle}
+    F --> H{Chatbot}
+    F --> I{Analyse IA}
+  </script>
+
+  <script type="text/plain" id="src-deploiement">
+flowchart TB
+    subgraph Client[Appareil]
+        REACT[React App]
+        IDB[(IndexedDB)]
+        SW[Service Worker]
+    end
+    subgraph Cloud[Cloud]
+        HOST[Hebergeur PWA]
+        SUPA[Supabase]
+        AIAPI[API IA]
+    end
+    REACT --> IDB
+    REACT --> SW
+    REACT --> HOST
+    REACT --> SUPA
+    REACT --> AIAPI
+  </script>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose',
+      htmlLabels: false,
+      flowchart: { useMaxWidth: true },
+    });
+
+    const DIAGRAMS = {
+      contexte: 'src-contexte',
+      usecase: 'src-usecase',
+      classes: 'src-classes',
+      er: 'src-er',
+      composants: 'src-composants',
+      'seq-cycle': 'src-seq-cycle',
+      'seq-chat': 'src-seq-chat',
+      'seq-ia': 'src-seq-ia',
+      activite: 'src-activite',
+      deploiement: 'src-deploiement',
+    };
+
+    const btn = document.getElementById('btn-download');
+    const bar = document.getElementById('download-bar');
+    const overlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+    const pdfContent = document.getElementById('pdf-content');
+
+    function setLoading(msg) {
+      loadingText.textContent = msg;
+      overlay.classList.add('show');
+    }
+
+    function hideLoading() {
+      overlay.classList.remove('show');
+    }
+
+    /** Rend un diagramme Mermaid en image PNG (compatible html2canvas) */
+    async function renderDiagramToImage(srcId, container) {
+      const code = document.getElementById(srcId).textContent.trim();
+      const id = 'mmd-' + srcId.replace('src-', '');
+      const { svg } = await mermaid.render(id, code);
+
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = svg;
+      const svgEl = wrapper.querySelector('svg');
+      if (!svgEl) throw new Error('SVG non généré pour ' + srcId);
+
+      const bbox = svgEl.getBoundingClientRect();
+      const w = svgEl.viewBox?.baseVal?.width || bbox.width || 800;
+      const h = svgEl.viewBox?.baseVal?.height || bbox.height || 600;
+      svgEl.setAttribute('width', w);
+      svgEl.setAttribute('height', h);
+
+      const svgBlob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const dataUrl =
+        'data:image/svg+xml;base64,' +
+        btoa(unescape(encodeURIComponent(svgEl.outerHTML)));
+
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.ceil(w * scale));
+          canvas.height = Math.max(1, Math.ceil(h * scale));
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fafafa';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+
+          const png = document.createElement('img');
+          png.className = 'diagram-img';
+          png.src = canvas.toDataURL('image/png');
+          png.alt = 'Diagramme';
+          container.innerHTML = '';
+          container.appendChild(png);
+          resolve(png);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Impossible de convertir le diagramme ' + srcId));
+        };
+        // dataUrl fonctionne même en file:// ; blob en fallback
+        img.src = dataUrl;
+      });
+    }
+
+    async function renderAllDiagrams() {
+      const blocks = pdfContent.querySelectorAll('[data-diagram]');
+      let i = 0;
+      for (const block of blocks) {
+        i++;
+        const key = block.getAttribute('data-diagram');
+        setLoading('Génération diagramme ' + i + ' / ' + blocks.length + '…');
+        await renderDiagramToImage(DIAGRAMS[key], block);
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
+    /** Ajoute une capture dans le PDF (découpage multi-pages si nécessaire) */
+    function addImageToPdf(pdf, imgData, canvasW, canvasH, margin) {
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+      const scaledH = (canvasH * usableW) / canvasW;
+
+      if (scaledH <= usableH) {
+        pdf.addImage(imgData, 'PNG', margin, margin, usableW, scaledH);
+        return;
+      }
+
+      let yOffset = 0;
+      let slice = 0;
+      while (yOffset < scaledH) {
+        if (slice > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, margin - yOffset, usableW, scaledH);
+        yOffset += usableH;
+        slice++;
+      }
+    }
+
+    async function generatePDF() {
+      btn.disabled = true;
+      setLoading('Initialisation…');
+
+      pdfContent.classList.add('exporting');
+
+      try {
+        await renderAllDiagrams();
+        await new Promise((r) => setTimeout(r, 300));
+
+        setLoading('Création du PDF…');
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const sections = pdfContent.querySelectorAll('.pdf-section');
+        const margin = 10;
+
+        for (let i = 0; i < sections.length; i++) {
+          setLoading('Page ' + (i + 1) + ' / ' + sections.length + '…');
+
+          if (i > 0) pdf.addPage();
+
+          const canvas = await html2canvas(sections[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            width: sections[i].scrollWidth,
+            height: sections[i].scrollHeight,
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          addImageToPdf(pdf, imgData, canvas.width, canvas.height, margin);
+        }
+
+        pdf.save('Modellisation_Nye_Cyclea.pdf');
+        bar.classList.add('hidden');
+        hideLoading();
+
+      } catch (err) {
+        console.error(err);
+        hideLoading();
+        bar.classList.add('hidden');
+        pdfContent.classList.remove('exporting');
+        pdfContent.style.display = 'block';
+        alert(
+          'Export automatique impossible.\n\n' +
+          'Le document va s\'ouvrir en impression.\n' +
+          'Choisissez « Enregistrer en PDF » ou « Microsoft Print to PDF ».'
+        );
+        setTimeout(() => window.print(), 400);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', generatePDF);
+  </script>
+</body>
+</html>

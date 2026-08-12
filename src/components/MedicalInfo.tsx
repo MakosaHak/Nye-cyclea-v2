@@ -1,21 +1,40 @@
-import { Heart, AlertTriangle, Lightbulb, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, AlertTriangle, Lightbulb, BookOpen, ArrowLeft } from 'lucide-react';
 
 export function MedicalInfo() {
+  const navigate = useNavigate();
+
   return (
-    <div className="space-y-6 pb-24 max-w-3xl mx-auto">
+    <div className="space-y-6 pb-6">
+      <button
+        onClick={() => navigate('/settings')}
+        className="flex items-center gap-2 text-pink-600 hover:text-pink-700 font-medium text-sm transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Retour aux paramètres
+      </button>
+
       {/* Header */}
-      <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 text-white shadow-xl border border-white/20"
+        style={{
+          background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.92), rgba(168, 85, 247, 0.88))',
+          boxShadow: '0 8px 32px rgba(244, 63, 94, 0.22)',
+        }}
+      >
         <div className="flex items-center gap-3 mb-2">
-          <BookOpen className="w-8 h-8" />
+          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <BookOpen className="w-5 h-5" />
+          </div>
           <h2 className="text-white font-bold text-xl">Conseils médicaux</h2>
         </div>
-        <p className="text-white/90">
+        <p className="text-white/90 text-sm">
           Informations validées pour mieux comprendre votre cycle menstruel
         </p>
       </div>
 
       {/* Understanding Your Cycle */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
+      <div className="glass-card p-6">
         <h3 className="text-gray-800 mb-4 flex items-center gap-2 font-bold text-lg">
           <Heart className="w-6 h-6 text-pink-600" />
           Comprendre votre cycle
@@ -61,7 +80,7 @@ export function MedicalInfo() {
       </div>
 
       {/* Healthy Tips */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
+      <div className="glass-card p-6">
         <h3 className="text-gray-800 mb-4 flex items-center gap-2 font-bold text-lg">
           <Lightbulb className="w-6 h-6 text-yellow-600" />
           Conseils pour un cycle sain (Bonus de Tonton Makosa✨)
@@ -126,7 +145,7 @@ export function MedicalInfo() {
       </div>
 
       {/* Warning Signs */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+      <div className="glass-card p-6 border-amber-200/60">
         <h3 className="text-gray-800 mb-4 flex items-center gap-2 font-bold text-lg">
           <AlertTriangle className="w-6 h-6 text-amber-600" />
           Quand consulter un professionnel de santé
@@ -171,7 +190,7 @@ export function MedicalInfo() {
       </div>
 
       {/* Contraception Notice */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
+      <div className="glass-card p-6">
         <h3 className="text-gray-800 mb-3 font-bold text-lg">⚠️ Important à savoir</h3>
 
         <div className="space-y-3 text-sm text-gray-700">

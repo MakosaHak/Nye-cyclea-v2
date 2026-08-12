@@ -8,16 +8,12 @@ import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster, toast } from 'sonner';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { SplashScreen } from './components/SplashScreen';
 
 // Lazy loaded components
 const Dashboard = lazy(() =>
   import('./components/Dashboard').then((m) => ({ default: m.Dashboard }))
 );
 const Calendar = lazy(() => import('./components/Calendar').then((m) => ({ default: m.Calendar })));
-const CycleHistory = lazy(() =>
-  import('./components/CycleHistory').then((m) => ({ default: m.CycleHistory }))
-);
 const AddCycle = lazy(() => import('./components/AddCycle').then((m) => ({ default: m.AddCycle })));
 const Settings = lazy(() => import('./components/Settings').then((m) => ({ default: m.Settings })));
 const MedicalInfo = lazy(() =>
@@ -30,6 +26,10 @@ const Layout = lazy(() => import('./components/Layout').then((m) => ({ default: 
 const SubscriptionScreen = lazy(() =>
   import('./components/SubscriptionScreen').then((m) => ({ default: m.SubscriptionScreen }))
 );
+const NyeAiChat = lazy(() =>
+  import('./components/NyeAiChat').then((m) => ({ default: m.NyeAiChat }))
+);
+const HealthHub = lazy(() => import('./components/HealthHub').then((m) => ({ default: m.HealthHub })));
 
 const LoadingFallback = () => (
   <div
@@ -67,11 +67,8 @@ export default function App() {
   useEffect(() => {
     // Wait for StorageService to initialize (IndexedDB is async on iOS)
     const init = async () => {
-      // Artificial delay to show the beautiful splash screen (2 seconds)
-      const splashPromise = new Promise((resolve) => setTimeout(resolve, 2000));
-
       try {
-        await Promise.all([StorageService.ensureReady(), splashPromise]);
+        await StorageService.ensureReady();
       } catch (e) {
         // If IndexedDB fails (e.g. private mode on iOS), continue anyway
         console.warn('Storage init failed, continuing:', e);
@@ -139,9 +136,8 @@ export default function App() {
     navigate('/');
   };
 
-  // Show professional Splash Screen while app initializes
   if (isLoading) {
-    return <SplashScreen />;
+    return <LoadingFallback />;
   }
 
   if (!isAuthenticated) {
@@ -166,8 +162,11 @@ export default function App() {
               path="/calendar"
               element={<Calendar onAddCycle={() => setShowAddCycle(true)} />}
             />
-            <Route path="/history" element={<CycleHistory />} />
+            <Route path="/hub" element={<HealthHub />} />
+            <Route path="/history" element={<Navigate to="/hub?tab=history" replace />} />
             <Route path="/medical" element={<MedicalInfo />} />
+            <Route path="/analytics" element={<Navigate to="/hub" replace />} />
+            <Route path="/chat" element={<NyeAiChat />} />
             <Route path="/settings" element={<Settings onLogout={handleLogout} />} />
           </Route>
           <Route path="/subscribe" element={<SubscriptionScreen />} />

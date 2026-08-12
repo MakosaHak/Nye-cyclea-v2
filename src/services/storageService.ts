@@ -1,5 +1,11 @@
 import { CycleEntry, UserSettings, AuthData } from '../types';
-import { KBEntry } from './chatLocalKB';
+
+interface KBEntry {
+  id: string;
+  category?: string;
+  keywords?: string[];
+  answer?: string;
+}
 
 const DB_NAME = 'menstrual_cycle_app';
 const DB_VERSION = 2; // Incremented version to add chat stores

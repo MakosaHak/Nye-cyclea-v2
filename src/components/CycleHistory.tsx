@@ -11,7 +11,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 
 export function CycleHistory() {
   const navigate = useNavigate();
-  const { cycles, stats, deleteCycle, loading } = useCyclesContext();
+  const { cycles, deleteCycle, loading } = useCyclesContext();
   const [cycleToDelete, setCycleToDelete] = useState<string | null>(null);
 
   const sortedCycles = useMemo(() => {
@@ -59,11 +59,6 @@ export function CycleHistory() {
     return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  // Check if we're using calculated values or defaults
-  const cyclesWithEndDate = useMemo(() => cycles.filter((c) => c.endDate).length, [cycles]);
-  const cycleIntervals = useMemo(() => Math.max(0, cycles.length - 1), [cycles]);
-  const usingCalculatedPeriod = cyclesWithEndDate > 0;
-
   if (loading && cycles.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -74,16 +69,14 @@ export function CycleHistory() {
 
   if (cycles.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto pb-24">
-        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full mx-auto flex items-center justify-center mb-4">
-            <Calendar className="w-10 h-10 text-purple-500" />
-          </div>
-          <h2 className="text-gray-800 mb-2">Aucun cycle enregistré</h2>
-          <p className="text-gray-600">
-            Commencez à enregistrer vos cycles pour voir votre historique et vos statistiques.
-          </p>
+      <div className="glass-card p-8 text-center">
+        <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl mx-auto flex items-center justify-center mb-4">
+          <Calendar className="w-8 h-8 text-purple-500" />
         </div>
+        <h2 className="text-gray-800 mb-2 font-bold text-lg">Aucun cycle enregistré</h2>
+        <p className="text-gray-600 text-sm">
+          Commencez à enregistrer vos cycles pour voir votre historique.
+        </p>
       </div>
     );
   }
@@ -92,65 +85,7 @@ export function CycleHistory() {
   const isPremium = SubscriptionService.isPremium(auth?.subscriptionType);
 
   return (
-    <div className="space-y-6">
-      {/* Statistics */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        <h2 className="text-gray-800 mb-4 font-bold text-xl">Statistiques</h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-5 h-5 text-purple-600" />
-              <span className="text-sm text-gray-700">Durée moyenne du cycle</span>
-            </div>
-            <p className="text-3xl text-purple-900">{stats.averageCycleLength}</p>
-            <p className="text-sm text-gray-600">jours</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-pink-50 to-red-50 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-5 h-5 text-pink-600" />
-              <span className="text-sm text-gray-700">Durée moyenne des règles</span>
-            </div>
-            <p className="text-3xl text-pink-900">{stats.averagePeriodLength}</p>
-            <p className="text-sm text-gray-600">jours</p>
-            {!usingCalculatedPeriod && (
-              <p className="text-xs text-gray-500 mt-1">(Valeur par défaut)</p>
-            )}
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              <span className="text-sm text-gray-700">Cycles enregistrés</span>
-            </div>
-            <p className="text-3xl text-blue-900">{cycles.length}</p>
-            <p className="text-sm text-gray-600">total</p>
-          </div>
-        </div>
-
-        {stats.predictionConfidence > 0 && (
-          <div className="mt-4 p-4 bg-purple-50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-700">Précision des prédictions</span>
-              <span className="text-sm text-purple-600">
-                {Math.round(stats.predictionConfidence * 100)}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
-                style={{ width: `${stats.predictionConfidence * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              Plus vous enregistrez de cycles, plus les prédictions sont précises
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Cycle List */}
+    <>
       <div className="space-y-3">
         <h2 className="text-gray-800 px-1 font-bold text-xl">Historique des cycles</h2>
 
@@ -162,7 +97,7 @@ export function CycleHistory() {
           return (
             <div
               key={cycle.id}
-              className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-shadow"
+              className="glass-card p-5 hover:shadow-xl transition-shadow rounded-2xl"
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -277,6 +212,6 @@ export function CycleHistory() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setCycleToDelete(null)}
       />
-    </div>
+    </>
   );
 }

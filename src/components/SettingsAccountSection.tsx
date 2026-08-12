@@ -1,6 +1,7 @@
 import { Shield, Crown, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AuthData } from '../types';
+import { ProBadge } from './ProBadge';
 
 interface SettingsAccountSectionProps {
   auth: AuthData | null;
@@ -20,30 +21,25 @@ export function SettingsAccountSection({ auth, isPremium }: SettingsAccountSecti
             className="relative w-full rounded-2xl active:scale-[0.98] transition-all group overflow-hidden"
             style={{ backgroundColor: '#FEF3C7', border: '1.5px solid #F59E0B' }}
           >
-            <div className="relative px-5 py-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+            <div className="relative px-6 py-5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
                 <div
                   className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: '#F59E0B' }}
                 >
                   <Crown className="w-6 h-6" style={{ color: '#ffffff' }} />
                 </div>
-                <div className="text-left">
-                  <div className="flex items-center gap-2 mb-0.5">
+                <div className="text-left min-w-0">
+                  <div className="flex items-center gap-2.5 mb-1 flex-wrap">
                     <h4
                       className="font-black text-base tracking-tight leading-none"
                       style={{ color: '#92400E' }}
                     >
                       Nye Cyclea Pro
                     </h4>
-                    <span
-                      className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: '#F59E0B', color: '#ffffff' }}
-                    >
-                      PRO
-                    </span>
+                    <ProBadge size="sm" showIcon={false} />
                   </div>
-                  <p style={{ color: '#B45309' }} className="text-[11px] font-semibold">
+                  <p style={{ color: '#B45309' }} className="text-[11px] font-semibold leading-snug">
                     Débloquez toutes les fonctionnalités ✨
                   </p>
                 </div>

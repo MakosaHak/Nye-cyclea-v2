@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Trash2, LogOut, ChevronDown } from 'lucide-react';
+import { Lock, Trash2, LogOut, ChevronDown, BookOpen, ChevronRight } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { UserSettings } from '../types';
@@ -103,6 +103,25 @@ export function Settings({ onLogout }: SettingsProps) {
           settings={settings}
           onSettingChange={(key, value) => handleSettingChange(key, value)}
         />
+
+        {/* Conseils */}
+        <div className="mb-6 pb-6 border-b border-gray-200">
+          <button
+            onClick={() => navigate('/medical')}
+            className="w-full flex items-center justify-between group py-2"
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-pink-600" />
+              <div className="text-left">
+                <h3 className="text-gray-700 font-semibold text-lg">Conseils</h3>
+                <p className="text-sm text-gray-500">
+                  Informations sur votre cycle et conseils santé
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-pink-500 transition-colors" />
+          </button>
+        </div>
 
         {/* Privacy Policy Integrated Section */}
         <div className="mb-6 pb-6 border-b border-gray-200">
