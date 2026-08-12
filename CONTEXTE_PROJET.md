@@ -18,7 +18,7 @@
 
 ---
 
-**Dernière mise à jour :** 12 août 2026 (session nettoyage chat legacy + IA cloud)  
+**Dernière mise à jour :** 12 août 2026 (IA gratuite Gemini + Groq)  
 **Version app :** 0.1.0  
 **Workspace :** `C:\Users\User\Desktop\Docs\Nye_Cyclea`  
 **Développeuse / product owner :** MakosaHak — abonnement **Pro** active en test
@@ -199,7 +199,7 @@ Nye_Cyclea/
 │   └── types/           # TypeScript interfaces
 ├── supabase/
 │   ├── config.toml
-│   └── functions/chat-ai/   # Edge Function OpenAI (Pro)
+│   └── functions/chat-ai/   # Edge Function Gemini + Groq (Pro, gratuit)
 ├── build/               # Sortie production (gitignored) — drag Netlify
 ├── netlify.toml         # Config build Netlify (si connexion Git)
 ├── DEPLOY.md            # Guide déploiement
@@ -244,7 +244,7 @@ Nye_Cyclea/
 | Aspect | Détail |
 |--------|--------|
 | Free | KB locale (mots-clés) dans `nyeAiService.ts` |
-| Pro | OpenAI via Edge Function `chat-ai` + contexte cycles ; fallback local si cloud down |
+| Pro | **Gemini** (principal) + **Groq** (secours) via Edge Function `chat-ai` ; fallback local si cloud down |
 | Stockage chat | `localStorage` clé `nye_ai_chat_v2` |
 | Contexte cycles | Tri DESC par `startDate` (corrigé) |
 | UI | Badge « IA en ligne » / « Mode local » sur les réponses |
@@ -449,13 +449,13 @@ Voir `DEPLOY.md` pour détails.
 | Composant | Réalité technique |
 |-----------|-------------------|
 | NyeAI Free | Matching mots-clés + FAQ statique |
-| NyeAI Pro | LLM OpenAI via `supabase/functions/chat-ai` — **à déployer** sur Supabase |
+| NyeAI Pro | LLM **Gemini / Groq** (gratuit) via `supabase/functions/chat-ai` — **à déployer** |
 | Dashboard « Analyse IA » | Statistiques + seuils (variance, tendances) |
 | PredictionService | Algorithmes cycles (sigma, moyennes) — pas ML |
 
 ### Ce qui MANQUE (demande product owner)
 
-- [ ] **Déployer** Edge Function `chat-ai` sur Supabase + secret `OPENAI_API_KEY`
+- [ ] **Déployer** Edge Function `chat-ai` + secrets `GEMINI_API_KEY` (+ `GROQ_API_KEY` secours)
 - [ ] Analyse **LLM** cycles irréguliers temps réel dans Espace Santé
 - [ ] Streaming chat
 - [ ] Commentaire IA dans export PDF
@@ -532,7 +532,7 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 
 ### P0 — Avant mise en prod v2
 - [ ] Déployer staging Netlify (drag-drop) + tester auth Pro
-- [ ] **Déployer** Edge Function `chat-ai` sur Supabase + configurer `OPENAI_API_KEY`
+- [ ] **Déployer** Edge Function `chat-ai` + `GEMINI_API_KEY` (et `GROQ_API_KEY` optionnel)
 - [ ] Tester NyeAI Pro : réponses « IA en ligne » (pas « Mode local »)
 
 ### P1 — Produit
@@ -550,6 +550,13 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 
 > **Ajouter ici chaque session.** Format : `YYYY-MM-DD — description`
 
+### 2026-08-12 — IA gratuite : Gemini + Groq (remplace OpenAI)
+
+- Edge Function `chat-ai` : **Google Gemini** (principal) + **Groq/Llama** (secours automatique)
+- Secrets Supabase : `GEMINI_API_KEY`, `GROQ_API_KEY` — plus de clé OpenAI payante
+- UI NyeAI : badge « IA en ligne (Gemini) » ou « (Groq) »
+- Guides : `DEPLOY.md` §8, `supabase/functions/chat-ai/README.md`
+
 ### 2026-08-12 — Nettoyage chat legacy + IA cloud NyeAI
 
 **Suppression ancien chat :**
@@ -559,7 +566,7 @@ Test mobile même WiFi : `http://IP_PC:3000` (affiché par Vite).
 - `clearAllData()` efface aussi `nye_ai_chat_v2`
 
 **IA réelle Pro :**
-- Nouvelle Edge Function `supabase/functions/chat-ai/index.ts` (OpenAI, vérif Pro via `profiles`)
+- Nouvelle Edge Function `supabase/functions/chat-ai/index.ts` (Gemini/Groq, vérif Pro via `profiles`)
 - `nyeAiService.ts` : historique conversation, contexte cycles trié, appel cloud amélioré
 - UI : badge « IA en ligne » / « Mode local » sur les réponses assistant
 - Guide déploiement dans `DEPLOY.md` §8 et `supabase/functions/chat-ai/README.md`

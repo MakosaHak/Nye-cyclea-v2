@@ -139,7 +139,7 @@ async function askCloudAi(
   prompt: string,
   history: ChatMessage[],
   contextBlock: string
-): Promise<string | null> {
+): Promise<{ text: string; provider?: string } | null> {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
     console.warn('[NyeAI] Pas de session Supabase — IA cloud indisponible');
@@ -171,7 +171,8 @@ async function askCloudAi(
   }
 
   if (data?.response && typeof data.response === 'string') {
-    return data.response.trim();
+    const provider = typeof data.provider === 'string' ? data.provider : undefined;
+    return { text: data.response.trim(), provider };
   }
 
   return null;
@@ -181,7 +182,7 @@ export async function askNyeAi(
   prompt: string,
   history: ChatMessage[],
   options: { isPremium: boolean; stats: UserStats | null; cycles: CycleEntry[] }
-): Promise<{ text: string; source: 'online' | 'local' }> {
+): Promise<{ text: string; source: 'online' | 'local'; provider?: string }> {
   const trimmed = prompt.trim();
   if (!trimmed) return { text: FALLBACK, source: 'local' };
 
@@ -191,7 +192,11 @@ export async function askNyeAi(
     try {
       const cloudReply = await askCloudAi(trimmed, history, contextBlock);
       if (cloudReply) {
-        return { text: cloudReply, source: 'online' };
+        return {
+          text: cloudReply.text,
+          source: 'online',
+          provider: cloudReply.provider,
+        };
       }
     } catch (e) {
       console.warn('[NyeAI] Cloud IA unavailable, fallback local', e);

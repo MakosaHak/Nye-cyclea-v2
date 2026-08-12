@@ -86,7 +86,7 @@ export function NyeAiChat() {
 
       try {
         const history = [...messages, userMsg];
-        const { text: reply, source } = await askNyeAi(content, history, {
+        const { text: reply, source, provider } = await askNyeAi(content, history, {
           isPremium,
           stats,
           cycles,
@@ -103,6 +103,7 @@ export function NyeAiChat() {
           content: finalText,
           createdAt: new Date().toISOString(),
           source,
+          provider,
         };
         setMessages((prev) => [...prev, botMsg]);
       } catch {
@@ -219,7 +220,9 @@ export function NyeAiChat() {
                 <span className="text-[10px] text-gray-400 px-1 flex items-center gap-1.5">
                   {formatTime(m.createdAt)}
                   {!isUser && m.source === 'online' && (
-                    <span className="text-emerald-600/80 font-medium">IA en ligne</span>
+                    <span className="text-emerald-600/80 font-medium">
+                      IA en ligne{m.provider ? ` (${m.provider === 'gemini' ? 'Gemini' : m.provider === 'groq' ? 'Groq' : m.provider})` : ''}
+                    </span>
                   )}
                   {!isUser && m.source === 'local' && isPremium && (
                     <span className="text-amber-600/80 font-medium">Mode local</span>

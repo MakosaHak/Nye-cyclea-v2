@@ -62,27 +62,34 @@ npm run dev      # développement local
 Avec les **mêmes** clés Supabase : les comptes vont dans la **même** base auth.  
 Les **cycles** restent **locaux** sur chaque appareil (IndexedDB).
 
-## 8. NyeAI — Edge Function (IA réelle Pro)
+## 8. NyeAI — Edge Function (IA gratuite Pro)
 
-Pour activer les **vraies réponses IA** (OpenAI) pour les abonnées Pro :
+NyeAI Pro utilise des IA **gratuites** (pas OpenAI) :
 
-1. Créer une clé API sur [OpenAI](https://platform.openai.com/)
-2. Dans Supabase → **Edge Functions → Secrets** :
-   - `OPENAI_API_KEY=sk-...`
-   - (optionnel) `OPENAI_MODEL=gpt-4o-mini`
-3. Déployer la function depuis le repo :
+| Fournisseur | Rôle | Clé Supabase |
+|-------------|------|--------------|
+| **Google Gemini** | Principal | `GEMINI_API_KEY` |
+| **Groq** (Llama) | Secours si Gemini indisponible | `GROQ_API_KEY` |
 
-```bash
-supabase login
-supabase link --project-ref VOTRE_PROJECT_REF
-supabase functions deploy chat-ai
-```
+### Étapes rapides
 
-Voir `supabase/functions/chat-ai/README.md` pour le détail.
+1. **Gemini** — https://aistudio.google.com/apikey → Create API key
+2. **Groq** (optionnel) — https://console.groq.com/keys → Create API key
+3. Installer CLI : `npm install -g supabase` puis `supabase login`
+4. Lier le projet : `supabase link --project-ref TON_PROJECT_REF`
+5. Secrets :
+   ```bash
+   supabase secrets set GEMINI_API_KEY=AIza...
+   supabase secrets set GROQ_API_KEY=gsk_...
+   ```
+6. Déployer : `supabase functions deploy chat-ai`
+7. Rebuild app : `npm run build` → drag-drop Netlify
+
+Guide détaillé : `supabase/functions/chat-ai/README.md`
 
 **Comportement :**
-- **Gratuit** → FAQ locale (mots-clés) dans `nyeAiService.ts`
-- **Pro** → appel `chat-ai` avec historique + contexte cycles ; fallback local si cloud indisponible
+- **Gratuit** → FAQ locale dans `nyeAiService.ts`
+- **Pro** → Gemini (puis Groq en secours) + contexte cycles ; fallback local si tout échoue
 
 ---
 

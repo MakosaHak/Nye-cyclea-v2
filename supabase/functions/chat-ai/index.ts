@@ -23,6 +23,8 @@ type RequestBody = {
   history?: ChatTurn[];
 };
 
+type AiResult = { text: string; provider: 'gemini' | 'groq'; model: string };
+
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -34,6 +36,165 @@ function isPremium(subscriptionType: string | null | undefined, expiry: string |
   if (subscriptionType !== 'monthly' && subscriptionType !== 'yearly') return false;
   if (!expiry) return true;
   return new Date(expiry) > new Date();
+}
+
+function buildSystemPrompt(body: RequestBody, contextText: string): string {
+  const base = body.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+  if (!contextText) return base;
+  return `${base}\n\nContexte de suivi (données locales de l'utilisatrice, à utiliser avec prudence):\n${contextText}`;
+}
+
+function buildOpenAiMessages(
+  systemPrompt: string,
+  history: ChatTurn[],
+  prompt: string
+): { role: 'system' | 'user' | 'assistant'; content: string }[] {
+  const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: systemPrompt },
+  ];
+  for (const turn of history) {
+    messages.push({ role: turn.role, content: turn.content.trim() });
+  }
+  if (!history.length || history[history.length - 1]?.content !== prompt) {
+    messages.push({ role: 'user', content: prompt });
+  }
+  return messages;
+}
+
+/** Google Gemini — quota gratuit généreux via Google AI Studio */
+async function callGemini(
+  systemPrompt: string,
+  history: ChatTurn[],
+  prompt: string
+): Promise<AiResult> {
+  const apiKey = Deno.env.get('GEMINI_API_KEY');
+  if (!apiKey) throw new Error('GEMINI_API_KEY manquante');
+
+  const model = Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash';
+
+  const contents: { role: string; parts: { text: string }[] }[] = [];
+
+  for (const turn of history) {
+    contents.push({
+      role: turn.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: turn.content.trim() }],
+    });
+  }
+
+  if (!history.length || history[history.length - 1]?.content !== prompt) {
+    contents.push({ role: 'user', parts: [{ text: prompt }] });
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: {
+        temperature: 0.65,
+        maxOutputTokens: 700,
+      },
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const msg = data.error?.message || JSON.stringify(data);
+    throw new Error(`Gemini: ${msg}`);
+  }
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) throw new Error('Gemini: réponse vide');
+
+  return { text, provider: 'gemini', model };
+}
+
+/** Groq — inférence rapide, tier gratuit (Llama) */
+async function callGroq(
+  systemPrompt: string,
+  history: ChatTurn[],
+  prompt: string
+): Promise<AiResult> {
+  const apiKey = Deno.env.get('GROQ_API_KEY');
+  if (!apiKey) throw new Error('GROQ_API_KEY manquante');
+
+  const model = Deno.env.get('GROQ_MODEL') || 'llama-3.3-70b-versatile';
+  const messages = buildOpenAiMessages(systemPrompt, history, prompt);
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: 700,
+      temperature: 0.65,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const msg = data.error?.message || JSON.stringify(data);
+    throw new Error(`Groq: ${msg}`);
+  }
+
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error('Groq: réponse vide');
+
+  return { text, provider: 'groq', model };
+}
+
+/** Essaie les fournisseurs dans l'ordre (défaut: gemini → groq) */
+async function callWithFallback(
+  systemPrompt: string,
+  history: ChatTurn[],
+  prompt: string
+): Promise<AiResult> {
+  const orderRaw = Deno.env.get('AI_PROVIDER_ORDER') || 'gemini,groq';
+  const order = orderRaw.split(',').map((p) => p.trim().toLowerCase());
+
+  const providers: Record<string, () => Promise<AiResult>> = {
+    gemini: () => callGemini(systemPrompt, history, prompt),
+    groq: () => callGroq(systemPrompt, history, prompt),
+  };
+
+  const errors: string[] = [];
+
+  for (const name of order) {
+    const fn = providers[name];
+    if (!fn) continue;
+
+    const hasKey =
+      (name === 'gemini' && Deno.env.get('GEMINI_API_KEY')) ||
+      (name === 'groq' && Deno.env.get('GROQ_API_KEY'));
+
+    if (!hasKey) {
+      errors.push(`${name}: clé API absente`);
+      continue;
+    }
+
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`[chat-ai] ${name} failed:`, msg);
+      errors.push(msg);
+    }
+  }
+
+  throw new Error(
+    errors.length
+      ? `Aucun fournisseur IA disponible. ${errors.join(' | ')}`
+      : 'Configurez GEMINI_API_KEY et/ou GROQ_API_KEY dans Supabase'
+  );
 }
 
 Deno.serve(async (req) => {
@@ -78,11 +239,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Abonnement Pro requis pour NyeAI en ligne' }, 403);
     }
 
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey) {
-      return jsonResponse({ error: 'Clé OPENAI_API_KEY non configurée sur Supabase' }, 503);
-    }
-
     const body = (await req.json()) as RequestBody;
     const prompt = body.prompt?.trim();
     if (!prompt) {
@@ -97,59 +253,17 @@ Deno.serve(async (req) => {
       .filter((m) => m.content?.trim() && (m.role === 'user' || m.role === 'assistant'))
       .slice(-10);
 
-    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-      { role: 'system', content: body.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT },
-    ];
+    const systemPrompt = buildSystemPrompt(body, contextText);
+    const result = await callWithFallback(systemPrompt, history, prompt);
 
-    if (contextText) {
-      messages.push({
-        role: 'system',
-        content: `Contexte de suivi (données locales de l'utilisatrice, à utiliser avec prudence):\n${contextText}`,
-      });
-    }
-
-    for (const turn of history) {
-      messages.push({ role: turn.role, content: turn.content.trim() });
-    }
-
-    if (!history.length || history[history.length - 1]?.content !== prompt) {
-      messages.push({ role: 'user', content: prompt });
-    }
-
-    const model = Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini';
-
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: 600,
-        temperature: 0.65,
-      }),
+    return jsonResponse({
+      response: result.text,
+      provider: result.provider,
+      model: result.model,
     });
-
-    const aiData = await aiRes.json();
-
-    if (!aiRes.ok) {
-      console.error('[chat-ai] OpenAI error:', aiData);
-      return jsonResponse(
-        { error: aiData.error?.message || 'Erreur du fournisseur IA' },
-        502
-      );
-    }
-
-    const response = aiData.choices?.[0]?.message?.content?.trim();
-    if (!response) {
-      return jsonResponse({ error: 'Réponse IA vide' }, 502);
-    }
-
-    return jsonResponse({ response, model });
   } catch (e) {
     console.error('[chat-ai]', e);
-    return jsonResponse({ error: e instanceof Error ? e.message : 'Erreur serveur' }, 500);
+    const message = e instanceof Error ? e.message : 'Erreur serveur';
+    return jsonResponse({ error: message }, 502);
   }
 });
