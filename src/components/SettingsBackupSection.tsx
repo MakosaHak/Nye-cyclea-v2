@@ -99,7 +99,7 @@ export function SettingsBackupSection({ isPremium }: SettingsBackupSectionProps)
           ) : (
             <Lock className="w-3.5 h-3.5 opacity-80" />
           )}
-          Exporter (JSON)
+          Exporter
         </button>
 
         <div className="relative">
