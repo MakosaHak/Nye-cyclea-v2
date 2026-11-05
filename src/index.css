@@ -405,6 +405,382 @@ body {
   flex: none;
 }
 
+/* ======================================
+   Espace Santé — dashboard d'analyse
+   CSS dédié (mêmes raisons que le chat NyeAI).
+   ====================================== */
+.nye-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.nye-dash-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(252, 231, 243, 0.95);
+  border-radius: 1.25rem;
+  padding: 1.1rem;
+  box-shadow: 0 6px 22px rgba(244, 63, 94, 0.07);
+}
+.nye-dash-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+}
+.nye-dash-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: #9ca3af;
+}
+.nye-dash-h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+.nye-dash-h2 svg {
+  color: #db2777;
+  flex: none;
+}
+
+/* Carte principale : taux d'irrégularité */
+.nye-dash-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.nye-dash-big {
+  margin: 0.1rem 0 0;
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #111827;
+}
+.nye-dash-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.nye-dash-meter {
+  height: 0.6rem;
+  margin: 0.85rem 0 0.75rem;
+  border-radius: 9999px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+.nye-dash-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+.nye-dash-summary {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+.nye-dash-hero.is-good .nye-dash-hero-badge {
+  color: #047857;
+  background: #d1fae5;
+}
+.nye-dash-hero.is-good .nye-dash-meter span {
+  background: #10b981;
+}
+.nye-dash-hero.is-warn .nye-dash-hero-badge {
+  color: #b45309;
+  background: #fef3c7;
+}
+.nye-dash-hero.is-warn .nye-dash-meter span {
+  background: #f59e0b;
+}
+.nye-dash-hero.is-alert .nye-dash-hero-badge {
+  color: #be123c;
+  background: #ffe4e6;
+}
+.nye-dash-hero.is-alert .nye-dash-meter span {
+  background: #f43f5e;
+}
+
+/* Chiffres clés */
+.nye-dash-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .nye-dash-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .nye-dash-stats.is-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.nye-dash-stat {
+  padding: 0.9rem;
+}
+.nye-dash-value {
+  margin: 0.2rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #111827;
+}
+.nye-dash-value small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
+.nye-dash-trend {
+  margin: 0.3rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #7e22ce;
+}
+
+/* Analyse NyeAI */
+.nye-dash-ai {
+  border-color: #f5d0fe;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(250, 232, 255, 0.7));
+}
+.nye-dash-ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+.nye-dash-ai-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.nye-dash-ai-title h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1f2937;
+}
+.nye-dash-ai-title p {
+  margin: 0.05rem 0 0;
+  font-size: 0.72rem;
+  color: #86198f;
+}
+.nye-dash-ai-icon {
+  flex: none;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #ec4899, #a855f7);
+}
+.nye-dash-refresh {
+  flex: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a21caf;
+  background: #fff;
+  border: 1px solid #f5d0fe;
+}
+.nye-dash-refresh:disabled {
+  opacity: 0.6;
+}
+.nye-dash-resume {
+  margin: 0 0 0.25rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #1f2937;
+}
+.nye-dash-note {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.8rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #6b7280;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px dashed #e9d5ff;
+}
+.nye-dash-pro-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.4rem;
+  font-weight: 700;
+  color: #b45309;
+  white-space: nowrap;
+}
+.nye-dash-h3 {
+  margin: 0.9rem 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #86198f;
+}
+.nye-dash-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  counter-reset: nye-dash;
+}
+.nye-dash-list li {
+  position: relative;
+  padding-left: 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #374151;
+}
+.nye-dash-list li::before {
+  content: "";
+  position: absolute;
+  left: 0.3rem;
+  top: 0.55rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: #ec4899;
+}
+.nye-dash-list.is-numbered li {
+  counter-increment: nye-dash;
+  padding-left: 1.9rem;
+}
+.nye-dash-list.is-numbered li::before {
+  content: counter(nye-dash);
+  left: 0;
+  top: 0.1rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #ec4899, #a855f7);
+}
+.nye-dash-consult {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.9rem;
+  color: #9f1239;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+}
+.nye-dash-consult svg {
+  flex: none;
+  margin-top: 0.1rem;
+}
+.nye-dash-consult p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.nye-dash-foot {
+  margin: 0.9rem 0 0;
+  font-size: 0.68rem;
+  color: #9ca3af;
+}
+.nye-dash-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.3rem 0 0.5rem;
+}
+.nye-dash-skeleton span {
+  height: 0.85rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #f5d0fe 25%, #fdf4ff 50%, #f5d0fe 75%);
+  background-size: 200% 100%;
+  animation: nye-dash-shimmer 1.3s linear infinite;
+}
+.nye-dash-skeleton span:nth-child(2) {
+  width: 85%;
+}
+.nye-dash-skeleton span:nth-child(3) {
+  width: 60%;
+}
+@keyframes nye-dash-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.nye-dash-spin {
+  animation: nye-dash-rotate 0.9s linear infinite;
+}
+@keyframes nye-dash-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Graphiques */
+.nye-dash-chart {
+  width: 100%;
+  height: 15rem;
+  margin-top: 0.5rem;
+}
+.nye-dash-chart.is-small {
+  height: 11.5rem;
+}
+
+/* États vides */
+.nye-dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 14rem;
+  text-align: center;
+  color: #a855f7;
+}
+.nye-dash-empty h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+.nye-dash-empty p {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.86rem;
+  color: #6b7280;
+}
+.nye-dash-empty-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f3e8ff, #fce7f3);
+}
+
 /* Glass nav utility */
 .glass-nav {
   background: rgba(255, 255, 255, 0.8);

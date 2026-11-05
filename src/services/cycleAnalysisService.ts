@@ -1,291 +1,314 @@
-import { CycleEntry, UserStats } from '../types';
-import { PredictionService } from './predictionService';
+import { CycleEntry } from '../types';
 
 export interface CycleAnalysis {
   isIrregular: boolean;
-  irregularityType: 'none' | 'length_variance' | 'period_variance' | 'missed_cycles' | 'very_long' | 'very_short';
+  irregularityType:
+    | 'none'
+    | 'length_variance'
+    | 'period_variance'
+    | 'missed_cycles'
+    | 'very_long'
+    | 'very_short';
   severity: 'low' | 'medium' | 'high';
   insights: string[];
   recommendations: string[];
+  /** Vrai si un avis médical est conseillé */
+  shouldConsult: boolean;
   confidence: number;
 }
 
 export interface CyclePattern {
+  /** Nombre de cycles complets mesurés (intervalle entre deux débuts de règles) */
+  cycleCount: number;
+  /** Longueur de chaque cycle, du plus ancien au plus récent */
+  lengths: number[];
   averageLength: number;
-  lengthVariance: number;
+  /** Écart-type de la longueur des cycles, en jours */
+  lengthStdDev: number;
+  shortestLength: number;
+  longestLength: number;
+  /** Écart entre le cycle le plus long et le plus court, en jours */
+  lengthRange: number;
   averagePeriodLength: number;
-  periodVariance: number;
-  regularityScore: number; // 0-100
+  /** Écart-type de la durée des règles, en jours */
+  periodStdDev: number;
+  /** 0-100 : 100 = parfaitement régulier */
+  regularityScore: number;
+  /** 0-100 : part des cycles qui s'écartent de plus de 3 jours du cycle médian */
+  irregularityRate: number;
   trends: {
     lengthTrend: 'increasing' | 'decreasing' | 'stable';
     periodTrend: 'increasing' | 'decreasing' | 'stable';
   };
 }
 
+export interface CycleChartPoint {
+  /** Libellé court du début du cycle, ex. « 12 mai » */
+  label: string;
+  cycleLength: number;
+  periodLength?: number;
+}
+
+export interface DashboardAnalysis {
+  summary: string;
+  pattern: CyclePattern;
+  analysis: CycleAnalysis;
+  chartData: CycleChartPoint[];
+}
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+/** Un intervalle hors de ces bornes est presque toujours un oubli de saisie, pas un vrai cycle */
+const MIN_PLAUSIBLE_CYCLE = 10;
+const MAX_PLAUSIBLE_CYCLE = 90;
+
+/** Tolérance autour du cycle médian avant de compter un cycle comme « irrégulier » */
+const DEVIATION_TOLERANCE_DAYS = 3;
+
+/** Repères médicaux usuels (FIGO) : cycle normal entre 24 et 38 jours, écart max de 7 à 9 jours */
+const NORMAL_MIN_LENGTH = 24;
+const NORMAL_MAX_LENGTH = 38;
+const IRREGULAR_RANGE_DAYS = 8;
+const HIGH_RANGE_DAYS = 15;
+/** Au-delà de cette part de cycles décalés, l'irrégularité est jugée forte */
+const HIGH_IRREGULARITY_RATE = 70;
+
+function parseLocalDate(iso: string): Date {
+  const [year, month, day] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((parseLocalDate(toIso).getTime() - parseLocalDate(fromIso).getTime()) / DAY_MS);
+}
+
+function mean(values: number[]): number {
+  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+}
+
+function stdDev(values: number[]): number {
+  if (values.length < 2) return 0;
+  const avg = mean(values);
+  return Math.sqrt(mean(values.map((v) => (v - avg) ** 2)));
+}
+
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function trendOf(values: number[]): 'increasing' | 'decreasing' | 'stable' {
+  if (values.length < 4) return 'stable';
+  const half = Math.floor(values.length / 2);
+  const diff = mean(values.slice(half)) - mean(values.slice(0, half));
+  if (Math.abs(diff) < 2) return 'stable';
+  return diff > 0 ? 'increasing' : 'decreasing';
+}
+
+function sortByStart(cycles: CycleEntry[]): CycleEntry[] {
+  return [...cycles].sort(
+    (a, b) => parseLocalDate(a.startDate).getTime() - parseLocalDate(b.startDate).getTime()
+  );
+}
+
+function periodLengthOf(cycle: CycleEntry): number | undefined {
+  if (!cycle.endDate) return undefined;
+  const length = daysBetween(cycle.startDate, cycle.endDate) + 1;
+  return length > 0 && length < 15 ? length : undefined;
+}
+
 /**
- * Service d'analyse des cycles avec IA pour détecter les irrégularités
+ * Analyse locale des cycles : calculs statistiques faits sur l'appareil, sans réseau.
+ * Sert de base à l'analyse IA et de repli quand l'IA n'est pas disponible.
  */
 export class CycleAnalysisService {
-  /**
-   * Analyse les cycles pour détecter les irrégularités
-   */
-  static analyzeCycles(cycles: CycleEntry[]): CycleAnalysis {
-    if (cycles.length < 2) {
-      return {
-        isIrregular: false,
-        irregularityType: 'none',
-        severity: 'low',
-        insights: ['Pas assez de données pour analyser les cycles.'],
-        recommendations: ['Continuez à enregistrer vos cycles pour obtenir une analyse précise.'],
-        confidence: 0,
-      };
+  static calculatePattern(cycles: CycleEntry[]): CyclePattern {
+    const sorted = sortByStart(cycles);
+
+    const lengths: number[] = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const length = daysBetween(sorted[i].startDate, sorted[i + 1].startDate);
+      if (length >= MIN_PLAUSIBLE_CYCLE && length <= MAX_PLAUSIBLE_CYCLE) lengths.push(length);
     }
 
-    const pattern = this.calculatePattern(cycles);
-    const analysis = this.detectIrregularities(pattern, cycles);
-    
-    return {
-      ...analysis,
-      confidence: Math.min(0.95, 0.3 + (cycles.length * 0.1)),
-    };
-  }
+    const periodLengths = sorted
+      .map(periodLengthOf)
+      .filter((length): length is number => length !== undefined);
 
-  /**
-   * Calcule les patterns et tendances des cycles
-   */
-  private static calculatePattern(cycles: CycleEntry[]): CyclePattern {
-    const sortedCycles = [...cycles].sort(
-      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    const lengthStdDev = stdDev(lengths);
+    const periodStdDev = stdDev(periodLengths);
+    const shortest = lengths.length ? Math.min(...lengths) : 0;
+    const longest = lengths.length ? Math.max(...lengths) : 0;
+
+    const mid = median(lengths);
+    const deviating = lengths.filter((l) => Math.abs(l - mid) > DEVIATION_TOLERANCE_DAYS).length;
+    const irregularityRate = lengths.length ? Math.round((deviating / lengths.length) * 100) : 0;
+
+    // 100 = aucun écart. Un écart-type de 2 jours reste « bon » (≈ 82), 8 jours tombe vers 30.
+    const regularityScore = Math.max(
+      0,
+      Math.min(100, Math.round(100 - lengthStdDev * 9 - periodStdDev * 5))
     );
 
-    // Calculate cycle lengths
-    const cycleLengths: number[] = [];
-    for (let i = 0; i < sortedCycles.length - 1; i++) {
-      const start = new Date(sortedCycles[i].startDate);
-      const nextStart = new Date(sortedCycles[i + 1].startDate);
-      const length = Math.round((nextStart.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      if (length >= 15 && length <= 50) {
-        cycleLengths.push(length);
-      }
-    }
-
-    // Calculate period lengths
-    const periodLengths: number[] = sortedCycles
-      .filter((cycle) => cycle.endDate)
-      .map((cycle) => {
-        const start = new Date(cycle.startDate);
-        const end = new Date(cycle.endDate!);
-        return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      })
-      .filter((length) => length > 0 && length < 15);
-
-    const averageLength = cycleLengths.length > 0 
-      ? cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length 
-      : 28;
-    
-    const lengthVariance = cycleLengths.length > 1 
-      ? this.calculateVariance(cycleLengths) 
-      : 0;
-
-    const averagePeriodLength = periodLengths.length > 0 
-      ? periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length 
-      : 5;
-    
-    const periodVariance = periodLengths.length > 1 
-      ? this.calculateVariance(periodLengths) 
-      : 0;
-
-    // Calculate regularity score (0-100)
-    const lengthRegularity = Math.max(0, 100 - (lengthVariance * 10));
-    const periodRegularity = Math.max(0, 100 - (periodVariance * 15));
-    const regularityScore = (lengthRegularity + periodRegularity) / 2;
-
-    // Calculate trends
-    const lengthTrend = this.calculateTrend(cycleLengths);
-    const periodTrend = this.calculateTrend(periodLengths);
-
     return {
-      averageLength: Math.round(averageLength),
-      lengthVariance: Math.round(lengthVariance * 10) / 10,
-      averagePeriodLength: Math.round(averagePeriodLength),
-      periodVariance: Math.round(periodVariance * 10) / 10,
-      regularityScore: Math.round(regularityScore),
+      cycleCount: lengths.length,
+      lengths,
+      averageLength: lengths.length ? Math.round(mean(lengths)) : 28,
+      lengthStdDev: round1(lengthStdDev),
+      shortestLength: shortest,
+      longestLength: longest,
+      lengthRange: longest - shortest,
+      averagePeriodLength: periodLengths.length ? Math.round(mean(periodLengths)) : 5,
+      periodStdDev: round1(periodStdDev),
+      regularityScore,
+      irregularityRate,
       trends: {
-        lengthTrend,
-        periodTrend,
+        lengthTrend: trendOf(lengths),
+        periodTrend: trendOf(periodLengths),
       },
     };
   }
 
-  /**
-   * Détecte les irrégularités basées sur les patterns
-   */
-  private static detectIrregularities(pattern: CyclePattern, cycles: CycleEntry[]): Omit<CycleAnalysis, 'confidence'> {
+  static analyzeCycles(cycles: CycleEntry[], pattern = this.calculatePattern(cycles)): CycleAnalysis {
+    if (pattern.cycleCount < 1) {
+      return {
+        isIrregular: false,
+        irregularityType: 'none',
+        severity: 'low',
+        insights: ['Pas encore assez de cycles pour mesurer ta régularité.'],
+        recommendations: ['Enregistre tes prochaines règles : l’analyse se précisera à chaque cycle.'],
+        shouldConsult: false,
+        confidence: 0,
+      };
+    }
+
     const insights: string[] = [];
     const recommendations: string[] = [];
     let irregularityType: CycleAnalysis['irregularityType'] = 'none';
-    let severity: CycleAnalysis['severity'] = 'low';
+    let severity = 'low' as CycleAnalysis['severity'];
+    const raise = (level: CycleAnalysis['severity']) => {
+      if (level === 'high' || (level === 'medium' && severity === 'low')) severity = level;
+    };
 
-    // Check length variance
-    if (pattern.lengthVariance > 5) {
+    if (pattern.cycleCount >= 2 && pattern.lengthRange >= IRREGULAR_RANGE_DAYS) {
       irregularityType = 'length_variance';
-      severity = pattern.lengthVariance > 10 ? 'high' : 'medium';
-      insights.push(`Vos cycles varient de ${pattern.lengthVariance.toFixed(1)} jours en moyenne.`);
-      recommendations.push('Une variation de plus de 5 jours peut indiquer des cycles irréguliers.');
-      
-      if (severity === 'high') {
-        recommendations.push('Considérez de consulter un professionnel de santé pour évaluer ces variations.');
-      }
+      raise(
+        pattern.lengthRange >= HIGH_RANGE_DAYS || pattern.irregularityRate >= HIGH_IRREGULARITY_RATE
+          ? 'high'
+          : 'medium'
+      );
+      insights.push(
+        `Tes cycles vont de ${pattern.shortestLength} à ${pattern.longestLength} jours, soit ${pattern.lengthRange} jours d’écart entre le plus court et le plus long.`
+      );
+      insights.push(
+        `${pattern.irregularityRate} % de tes cycles s’écartent de plus de ${DEVIATION_TOLERANCE_DAYS} jours de ton cycle habituel.`
+      );
+      recommendations.push(
+        'Note les événements qui précèdent un cycle décalé (stress, voyage, maladie, changement de poids ou de sommeil).'
+      );
     }
 
-    // Check period variance
-    if (pattern.periodVariance > 2) {
-      if (irregularityType === 'none') irregularityType = 'period_variance';
-      const newSeverity: CycleAnalysis['severity'] = pattern.periodVariance > 4 ? 'high' : 'medium';
-      severity = severity === 'high' ? 'high' : newSeverity;
-      insights.push(`La durée de vos règles varie de ${pattern.periodVariance.toFixed(1)} jours.`);
-      recommendations.push('Des variations importantes dans la durée des règles peuvent mériter une attention.');
-    }
-
-    // Check for very long cycles
-    if (pattern.averageLength > 35) {
+    if (pattern.averageLength > NORMAL_MAX_LENGTH) {
       if (irregularityType === 'none') irregularityType = 'very_long';
-      severity = severity === 'high' ? 'high' : 'medium';
-      insights.push(`Vos cycles sont plus longs que la moyenne (${pattern.averageLength} jours).`);
-      recommendations.push('Des cycles longs peuvent être normaux, mais méritent d\'être surveillés.');
-    }
-
-    // Check for very short cycles
-    if (pattern.averageLength < 21) {
+      raise('medium');
+      insights.push(
+        `Ton cycle moyen (${pattern.averageLength} jours) est plus long que la plage habituelle de ${NORMAL_MIN_LENGTH} à ${NORMAL_MAX_LENGTH} jours.`
+      );
+    } else if (pattern.averageLength < NORMAL_MIN_LENGTH) {
       if (irregularityType === 'none') irregularityType = 'very_short';
-      severity = severity === 'high' ? 'high' : 'medium';
-      insights.push(`Vos cycles sont plus courts que la moyenne (${pattern.averageLength} jours).`);
-      recommendations.push('Des cycles courts peuvent être normaux, mais méritent d\'être surveillés.');
+      raise('medium');
+      insights.push(
+        `Ton cycle moyen (${pattern.averageLength} jours) est plus court que la plage habituelle de ${NORMAL_MIN_LENGTH} à ${NORMAL_MAX_LENGTH} jours.`
+      );
     }
 
-    // Add trend insights
+    if (pattern.periodStdDev > 1.5) {
+      if (irregularityType === 'none') irregularityType = 'period_variance';
+      raise('medium');
+      insights.push(
+        `La durée de tes règles varie aussi (environ ± ${pattern.periodStdDev.toFixed(1)} jour autour de ${pattern.averagePeriodLength} jours).`
+      );
+    }
+
     if (pattern.trends.lengthTrend !== 'stable') {
-      const trendText = pattern.trends.lengthTrend === 'increasing' 
-        ? 's\'allongent' 
-        : 'raccourcissent';
-      insights.push(`Vos cycles ${trendText} progressivement.`);
-      recommendations.push('Surveillez cette tendance et notez tout changement important.');
+      insights.push(
+        pattern.trends.lengthTrend === 'increasing'
+          ? 'Sur la période, tes cycles ont tendance à s’allonger.'
+          : 'Sur la période, tes cycles ont tendance à raccourcir.'
+      );
     }
 
-    // Regularity score insight
-    if (pattern.regularityScore < 60) {
-      insights.push(`Score de régularité: ${pattern.regularityScore}/100`);
-      recommendations.push('Un score bas indique des cycles irréguliers. Continuez à les suivre.');
-    }
+    const isIrregular = irregularityType !== 'none';
+    const shouldConsult = severity === 'high' || pattern.longestLength > 45;
 
-    // If no irregularities detected
-    if (irregularityType === 'none') {
-      insights.push('Vos cycles semblent réguliers.');
-      recommendations.push('Continuez à les suivre pour maintenir cette régularité.');
+    if (isIrregular) {
+      recommendations.push(
+        'Les prédictions de règles et d’ovulation sont moins fiables avec des cycles irréguliers : ne t’y fie pas comme moyen de contraception.'
+      );
+      recommendations.push(
+        shouldConsult
+          ? 'Avec des écarts de cette ampleur, parle-en à un·e professionnel·le de santé (sage-femme, gynécologue) en montrant ton historique.'
+          : 'Si ces variations durent plus de trois mois ou s’accompagnent de douleurs fortes, demande un avis médical.'
+      );
+    } else {
+      insights.push(
+        `Tes cycles sont réguliers : ils restent proches de ${pattern.averageLength} jours (± ${pattern.lengthStdDev.toFixed(1)} jour).`
+      );
+      recommendations.push('Continue à enregistrer tes règles pour garder des prédictions fiables.');
     }
 
     return {
-      isIrregular: irregularityType !== 'none',
+      isIrregular,
       irregularityType,
       severity,
       insights,
       recommendations,
+      shouldConsult,
+      confidence: Math.min(0.95, 0.35 + pattern.cycleCount * 0.1),
     };
   }
 
-  /**
-   * Calcule la variance d'un ensemble de valeurs
-   */
-  private static calculateVariance(values: number[]): number {
-    if (values.length === 0) return 0;
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
-    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-  }
-
-  /**
-   * Calcule la tendance d'un ensemble de valeurs
-   */
-  private static calculateTrend(values: number[]): 'increasing' | 'decreasing' | 'stable' {
-    if (values.length < 3) return 'stable';
-    
-    const firstHalf = values.slice(0, Math.floor(values.length / 2));
-    const secondHalf = values.slice(Math.floor(values.length / 2));
-    
-    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-    
-    const diff = secondAvg - firstAvg;
-    
-    if (Math.abs(diff) < 2) return 'stable';
-    return diff > 0 ? 'increasing' : 'decreasing';
-  }
-
-  /**
-   * Génère une analyse détaillée pour le tableau de bord
-   */
-  static generateDashboardAnalysis(cycles: CycleEntry[]): {
-    summary: string;
-    pattern: CyclePattern;
-    analysis: CycleAnalysis;
-    monthlyData: Array<{ month: string; cycleLength: number; periodLength?: number }>;
-  } {
+  static generateDashboardAnalysis(cycles: CycleEntry[]): DashboardAnalysis {
     const pattern = this.calculatePattern(cycles);
-    const analysis = this.analyzeCycles(cycles);
-    
-    // Generate monthly data for charts
-    const monthlyData = this.generateMonthlyData(cycles);
-    
-    // Generate summary
-    const summary = this.generateSummary(pattern, analysis);
-    
+    const analysis = this.analyzeCycles(cycles, pattern);
     return {
-      summary,
+      summary: this.generateSummary(pattern, analysis),
       pattern,
       analysis,
-      monthlyData,
+      chartData: this.generateChartData(cycles),
     };
   }
 
-  /**
-   * Génère les données mensuelles pour les graphiques
-   */
-  private static generateMonthlyData(cycles: CycleEntry[]): Array<{ month: string; cycleLength: number; periodLength?: number }> {
-    const sortedCycles = [...cycles].sort(
-      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-    );
-
-    const data: Array<{ month: string; cycleLength: number; periodLength?: number }> = [];
-    
-    for (let i = 0; i < sortedCycles.length - 1; i++) {
-      const current = sortedCycles[i];
-      const next = sortedCycles[i + 1];
-      
-      const startDate = new Date(current.startDate);
-      const nextStartDate = new Date(next.startDate);
-      const cycleLength = Math.round((nextStartDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      let periodLength: number | undefined;
-      if (current.endDate) {
-        const endDate = new Date(current.endDate);
-        periodLength = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      }
-      
-      const month = startDate.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
-      
-      data.push({ month, cycleLength, periodLength });
+  private static generateChartData(cycles: CycleEntry[]): CycleChartPoint[] {
+    const sorted = sortByStart(cycles);
+    const data: CycleChartPoint[] = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const cycleLength = daysBetween(sorted[i].startDate, sorted[i + 1].startDate);
+      if (cycleLength < MIN_PLAUSIBLE_CYCLE || cycleLength > MAX_PLAUSIBLE_CYCLE) continue;
+      data.push({
+        label: parseLocalDate(sorted[i].startDate).toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'short',
+        }),
+        cycleLength,
+        periodLength: periodLengthOf(sorted[i]),
+      });
     }
-    
     return data;
   }
 
-  /**
-   * Génère un résumé de l'analyse
-   */
   private static generateSummary(pattern: CyclePattern, analysis: CycleAnalysis): string {
-    if (analysis.isIrregular) {
-      return `Vos cycles présentent des ${analysis.irregularityType === 'length_variance' ? 'variations de longueur' : 'irrégularités'} (${analysis.severity === 'high' ? 'importantes' : 'modérées'}). Score de régularité: ${pattern.regularityScore}/100.`;
+    const base = `Sur tes ${pattern.cycleCount} derniers cycles mesurés`;
+    if (!analysis.isIrregular) {
+      return `${base}, ta régularité est bonne : cycle moyen de ${pattern.averageLength} jours, score de ${pattern.regularityScore}/100.`;
     }
-    return `Vos cycles sont réguliers avec une longueur moyenne de ${pattern.averageLength} jours. Score de régularité: ${pattern.regularityScore}/100.`;
+    const level = analysis.severity === 'high' ? 'forte' : 'modérée';
+    return `${base}, l’irrégularité est ${level} : taux d’irrégularité de ${pattern.irregularityRate} %, score de régularité de ${pattern.regularityScore}/100.`;
   }
 }

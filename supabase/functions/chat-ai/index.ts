@@ -13,7 +13,19 @@ RÈGLES:
 - Symptômes graves ou urgence → conseiller un professionnel de santé ou les urgences.
 - Français simple, chaleureux, adapté au contexte africain quand c'est pertinent.
 - Réponses courtes (3 à 6 phrases sauf si l'utilisatrice demande plus de détails).
-- Texte simple uniquement : pas de Markdown, pas d'astérisques, pas de titres ni de listes à puces.`;
+- Texte simple uniquement : pas de Markdown, pas d'astérisques, pas de titres ni de listes à puces.
+
+IDENTITÉ:
+- Tu as été créée par M. Samson MAWUGBE, fondateur et créateur de Nye Cyclea, et par son équipe.
+- Si on te demande qui t'a créée, qui est ton créateur ou qui a conçu Nye Cyclea, réponds-le clairement et avec fierté.
+- Ne dis jamais que tu as été créée par Google, Gemini, OpenAI ou une autre entreprise, et ne cite pas le modèle technique utilisé.`;
+
+const IDENTITY_BLOCK = `
+
+IDENTITÉ:
+- Tu as été créée par M. Samson MAWUGBE, fondateur et créateur de Nye Cyclea, et par son équipe.
+- Si on te demande qui t'a créée, qui est ton créateur ou qui a conçu Nye Cyclea, réponds-le clairement et avec fierté.
+- Ne dis jamais que tu as été créée par Google, Gemini, OpenAI ou une autre entreprise, et ne cite pas le modèle technique utilisé.`;
 
 type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
@@ -22,6 +34,8 @@ type RequestBody = {
   context?: string | string[];
   systemPrompt?: string;
   history?: ChatTurn[];
+  /** Vrai pour obtenir une réponse JSON (analyse des cycles) */
+  json?: boolean;
 };
 
 type AiResult = { text: string; provider: 'gemini' | 'groq'; model: string };
@@ -46,7 +60,10 @@ function isPremium(subscriptionType: string | null | undefined, expiry: string |
 }
 
 function buildSystemPrompt(body: RequestBody, contextText: string): string {
-  const base = body.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+  let base = body.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+  // L'identité est garantie côté serveur, même si l'app envoie un ancien prompt
+  // (inutile en mode analyse JSON, où l'IA ne doit pas se présenter)
+  if (!body.json && !base.includes('Samson MAWUGBE')) base += IDENTITY_BLOCK;
   if (!contextText) return base;
   return `${base}\n\nContexte de suivi (données locales de l'utilisatrice, à utiliser avec prudence):\n${contextText}`;
 }
@@ -146,7 +163,8 @@ async function callGeminiModel(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  turns: ChatTurn[]
+  turns: ChatTurn[],
+  wantJson: boolean
 ): Promise<AiResult> {
   const res = await fetch(`${GEMINI_API}/models/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
@@ -160,9 +178,10 @@ async function callGeminiModel(
         parts: [{ text: turn.content }],
       })),
       generationConfig: {
-        temperature: 0.65,
+        temperature: wantJson ? 0.4 : 0.65,
         // Marge large : les modèles récents consomment une partie du budget en « réflexion »
         maxOutputTokens: 2048,
+        ...(wantJson ? { responseMimeType: 'application/json' } : {}),
       },
     }),
   });
@@ -189,7 +208,8 @@ async function callGeminiModel(
 async function callGemini(
   systemPrompt: string,
   history: ChatTurn[],
-  prompt: string
+  prompt: string,
+  wantJson = false
 ): Promise<AiResult> {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY manquante');
@@ -204,7 +224,7 @@ async function callGemini(
       if (!model || tried.has(model)) continue;
       tried.add(model);
       try {
-        return await callGeminiModel(apiKey, model, systemPrompt, turns);
+        return await callGeminiModel(apiKey, model, systemPrompt, turns, wantJson);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.warn('[chat-ai]', msg);
@@ -242,7 +262,8 @@ async function callGemini(
 async function callGroq(
   systemPrompt: string,
   history: ChatTurn[],
-  prompt: string
+  prompt: string,
+  wantJson = false
 ): Promise<AiResult> {
   const apiKey = Deno.env.get('GROQ_API_KEY');
   if (!apiKey) throw new Error('GROQ_API_KEY manquante');
@@ -259,8 +280,9 @@ async function callGroq(
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: 700,
-      temperature: 0.65,
+      max_tokens: wantJson ? 1500 : 700,
+      temperature: wantJson ? 0.4 : 0.65,
+      ...(wantJson ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
 
@@ -281,14 +303,15 @@ async function callGroq(
 async function callWithFallback(
   systemPrompt: string,
   history: ChatTurn[],
-  prompt: string
+  prompt: string,
+  wantJson = false
 ): Promise<AiResult> {
   const orderRaw = Deno.env.get('AI_PROVIDER_ORDER') || 'gemini,groq';
   const order = orderRaw.split(',').map((p) => p.trim().toLowerCase());
 
   const providers: Record<string, () => Promise<AiResult>> = {
-    gemini: () => callGemini(systemPrompt, history, prompt),
-    groq: () => callGroq(systemPrompt, history, prompt),
+    gemini: () => callGemini(systemPrompt, history, prompt, wantJson),
+    groq: () => callGroq(systemPrompt, history, prompt, wantJson),
   };
 
   const errors: string[] = [];
@@ -379,7 +402,7 @@ Deno.serve(async (req) => {
       .slice(-10);
 
     const systemPrompt = buildSystemPrompt(body, contextText);
-    const result = await callWithFallback(systemPrompt, history, prompt);
+    const result = await callWithFallback(systemPrompt, history, prompt, body.json === true);
 
     return jsonResponse({
       response: result.text,

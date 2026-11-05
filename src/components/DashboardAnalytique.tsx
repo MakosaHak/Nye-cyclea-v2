@@ -1,233 +1,378 @@
-import { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
-import { TrendingUp, AlertTriangle, CheckCircle, Activity, Calendar, Clock } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Crown,
+  RefreshCw,
+  Sparkles,
+  Stethoscope,
+  TrendingUp,
+} from 'lucide-react';
 import { useCyclesContext } from '../contexts/CyclesContext';
 import { CycleAnalysisService } from '../services/cycleAnalysisService';
+import {
+  analyzeCyclesWithAi,
+  cyclesSignature,
+  readCachedAiAnalysis,
+  type AiAnalysisFailure,
+  type AiCycleAnalysis,
+} from '../services/cycleAiAnalysisService';
+import { StorageService } from '../services/storageService';
+import { SubscriptionService } from '../services/subscriptionService';
+
+type AiState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; analysis: AiCycleAnalysis }
+  | { status: 'failed'; reason: AiAnalysisFailure };
+
+const TOOLTIP_STYLE = {
+  backgroundColor: 'rgba(255, 255, 255, 0.97)',
+  border: '1px solid #fbcfe8',
+  borderRadius: '10px',
+  boxShadow: '0 4px 14px rgba(244, 63, 94, 0.12)',
+  fontSize: '12px',
+};
+
+const TREND_LABEL = {
+  increasing: 'En augmentation ↑',
+  decreasing: 'En diminution ↓',
+  stable: 'Stable →',
+} as const;
+
+const FAILURE_TEXT: Record<AiAnalysisFailure, string> = {
+  offline: 'Tu es hors ligne : voici l’analyse calculée sur ton appareil.',
+  not_pro: 'L’analyse rédigée par NyeAI est réservée à Nye Cyclea Pro. Voici l’analyse calculée sur ton appareil.',
+  session: 'Ta session a expiré : reconnecte-toi pour l’analyse NyeAI. Voici l’analyse calculée sur ton appareil.',
+  service: 'NyeAI est momentanément saturée. Voici l’analyse calculée sur ton appareil.',
+};
+
+function levelOf(rate: number, irregular: boolean): 'good' | 'warn' | 'alert' {
+  if (!irregular) return 'good';
+  return rate >= 50 ? 'alert' : 'warn';
+}
 
 export function DashboardAnalytique() {
   const { cycles, loading } = useCyclesContext();
+  const isPremium = SubscriptionService.isPremium(StorageService.getAuth()?.subscriptionType);
 
-  const analysisData = useMemo(() => {
-    if (cycles.length < 2) return null;
-    return CycleAnalysisService.generateDashboardAnalysis(cycles);
+  const data = useMemo(() => {
+    const result = CycleAnalysisService.generateDashboardAnalysis(cycles);
+    return result.pattern.cycleCount >= 1 ? result : null;
   }, [cycles]);
+
+  const signature = useMemo(() => cyclesSignature(cycles), [cycles]);
+  const [ai, setAi] = useState<AiState>({ status: 'idle' });
+
+  const runAi = useCallback(async () => {
+    if (!data) return;
+    setAi({ status: 'loading' });
+    const result = await analyzeCyclesWithAi(cycles, data.pattern, data.analysis);
+    setAi(
+      'analysis' in result
+        ? { status: 'ready', analysis: result.analysis }
+        : { status: 'failed', reason: result.fail }
+    );
+  }, [cycles, data]);
+
+  // À chaque changement des cycles : on reprend l'analyse en cache, sinon on interroge NyeAI
+  useEffect(() => {
+    if (!data) {
+      setAi({ status: 'idle' });
+      return;
+    }
+    const cached = readCachedAiAnalysis(signature);
+    if (cached) {
+      setAi({ status: 'ready', analysis: cached });
+    } else if (isPremium) {
+      void runAi();
+    } else {
+      setAi({ status: 'failed', reason: 'not_pro' });
+    }
+    // runAi dépend de `data` et `cycles`, déjà couverts par `signature`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, isPremium]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500" />
+      <div className="nye-dash-empty">
+        <RefreshCw className="nye-dash-spin" width={28} height={28} />
       </div>
     );
   }
 
-  if (!analysisData) {
+  if (!data) {
     return (
-      <div className="glass-card p-8 text-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl mx-auto flex items-center justify-center mb-4">
-          <Activity className="w-8 h-8 text-purple-500" />
+      <div className="nye-dash-card nye-dash-empty">
+        <div className="nye-dash-empty-icon">
+          <Activity width={30} height={30} />
         </div>
-        <h2 className="text-gray-800 mb-2 font-bold text-lg">Analyse insuffisante</h2>
-        <p className="text-gray-600 text-sm">
-          Enregistrez au moins 2 cycles pour débloquer l'analyse de vos tendances.
-        </p>
+        <h2>Analyse en attente</h2>
+        <p>Enregistre au moins 2 débuts de règles pour débloquer l’analyse de ta régularité.</p>
       </div>
     );
   }
 
-  const { summary, pattern, analysis, monthlyData } = analysisData;
+  const { summary, pattern, analysis, chartData } = data;
+  const level = levelOf(pattern.irregularityRate, analysis.isIrregular);
+  const aiAnalysis = ai.status === 'ready' ? ai.analysis : null;
+  const constats = aiAnalysis?.constats.length ? aiAnalysis.constats : analysis.insights;
+  const conseils = aiAnalysis ? aiAnalysis.conseils : analysis.recommendations;
+  // Par prudence : il suffit que le calcul local OU l'IA le recommande
+  const consulter = analysis.shouldConsult || aiAnalysis?.consulter === true;
 
   return (
-    <div className="space-y-6">
-      {/* Résumé */}
-      <div className="glass-card p-5">
-        <p className="text-sm text-gray-600 leading-relaxed">{summary}</p>
-      </div>
-
-      {/* Analysis Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Regularity Score */}
-        <div className="glass-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-gray-600">Score de Régularité</span>
-            {pattern.regularityScore >= 70 ? (
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            ) : pattern.regularityScore >= 50 ? (
-              <Activity className="w-5 h-5 text-yellow-500" />
-            ) : (
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-            )}
+    <div className="nye-dash">
+      {/* Taux d'irrégularité */}
+      <section className={`nye-dash-card nye-dash-hero is-${level}`}>
+        <div className="nye-dash-hero-top">
+          <div>
+            <p className="nye-dash-label">Taux d’irrégularité</p>
+            <p className="nye-dash-big">{pattern.irregularityRate} %</p>
           </div>
-          <div className="text-3xl font-bold text-gray-800">{pattern.regularityScore}/100</div>
-          <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all ${
-                pattern.regularityScore >= 70 ? 'bg-green-500' : pattern.regularityScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-              }`}
-              style={{ width: `${pattern.regularityScore}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Average Cycle Length */}
-        <div className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-5 h-5 text-purple-600" />
-            <span className="text-sm text-gray-600">Longueur Moyenne</span>
-          </div>
-          <div className="text-3xl font-bold text-gray-800">{pattern.averageLength} jours</div>
-          <div className="text-sm text-gray-500 mt-2">±{pattern.lengthVariance.toFixed(1)} jours</div>
-        </div>
-
-        {/* Average Period Length */}
-        <div className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-5 h-5 text-pink-600" />
-            <span className="text-sm text-gray-600">Durée Moyenne Règles</span>
-          </div>
-          <div className="text-3xl font-bold text-gray-800">{pattern.averagePeriodLength} jours</div>
-          <div className="text-sm text-gray-500 mt-2">±{pattern.periodVariance.toFixed(1)} jours</div>
-        </div>
-      </div>
-
-      {/* Cycle Length Chart */}
-      <div className="glass-card p-6">
-        <h2 className="text-gray-800 font-bold text-lg mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-purple-600" />
-          Évolution de la Longueur des Cycles
-        </h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={monthlyData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" stroke="#666" />
-            <YAxis stroke="#666" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e5e5',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              }}
-            />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="cycleLength"
-              stroke="#ec4899"
-              strokeWidth={2}
-              dot={{ fill: '#ec4899', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6 }}
-              name="Longueur du cycle (jours)"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Period Length Chart */}
-      <div className="glass-card p-6">
-        <h2 className="text-gray-800 font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-pink-600" />
-          Évolution de la Durée des Règles
-        </h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={monthlyData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" stroke="#666" />
-            <YAxis stroke="#666" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e5e5',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              }}
-            />
-            <Legend />
-            <Bar dataKey="periodLength" fill="#a855f7" radius={[4, 4, 0, 0]} name="Durée des règles (jours)" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* AI Analysis Section */}
-      <div
-        className={`glass-card p-6 ${
-          analysis.isIrregular ? 'border-orange-200/80' : 'border-green-200/80'
-        }`}
-        style={{
-          background: analysis.isIrregular
-            ? 'linear-gradient(135deg, rgba(255, 237, 213, 0.65), rgba(254, 226, 226, 0.55))'
-            : 'linear-gradient(135deg, rgba(209, 250, 229, 0.55), rgba(220, 252, 231, 0.45))',
-        }}
-      >
-        <div className="flex items-start gap-4">
-          <div className={`p-3 rounded-full ${
-            analysis.isIrregular ? 'bg-orange-100' : 'bg-green-100'
-          }`}>
+          <div className="nye-dash-hero-badge">
             {analysis.isIrregular ? (
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
+              <AlertTriangle width={16} height={16} />
             ) : (
-              <CheckCircle className="w-6 h-6 text-green-600" />
+              <CheckCircle width={16} height={16} />
             )}
-          </div>
-          <div className="flex-1">
-            <h3 className={`font-bold text-lg mb-2 ${
-              analysis.isIrregular ? 'text-orange-800' : 'text-green-800'
-            }`}>
-              {analysis.isIrregular ? 'Analyse IA : Cycles Irréguliers Détectés' : 'Analyse IA : Cycles Réguliers'}
-            </h3>
-            <div className="space-y-3">
-              {analysis.insights.map((insight, index) => (
-                <p key={index} className="text-sm text-gray-700">
-                  • {insight}
-                </p>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h4 className="font-semibold text-sm text-gray-800 mb-2">Recommandations IA :</h4>
-              <div className="space-y-2">
-                {analysis.recommendations.map((rec, index) => (
-                  <p key={index} className="text-sm text-gray-600">
-                    {index + 1}. {rec}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="mt-3 text-xs text-gray-500">
-              Confiance de l'analyse : {Math.round(analysis.confidence * 100)}%
-            </div>
+            {!analysis.isIrregular
+              ? 'Cycles réguliers'
+              : analysis.severity === 'high'
+                ? 'Irrégularité forte'
+                : 'Irrégularité modérée'}
           </div>
         </div>
-      </div>
+        <div
+          className="nye-dash-meter"
+          role="img"
+          aria-label={`Taux d’irrégularité : ${pattern.irregularityRate} %`}
+        >
+          <span style={{ width: `${Math.max(4, pattern.irregularityRate)}%` }} />
+        </div>
+        <p className="nye-dash-summary">{summary}</p>
+      </section>
 
-      {/* Trends Section */}
-      <div className="glass-card p-6">
-        <h2 className="text-gray-800 font-bold text-lg mb-4">Tendances Détectées</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-purple-50 rounded-xl p-4">
-            <div className="text-sm text-gray-600 mb-1">Tendance Longueur Cycle</div>
-            <div className={`font-bold ${
-              pattern.trends.lengthTrend === 'increasing' ? 'text-red-600' :
-              pattern.trends.lengthTrend === 'decreasing' ? 'text-green-600' :
-              'text-blue-600'
-            }`}>
-              {pattern.trends.lengthTrend === 'increasing' ? 'En augmentation ↑' :
-               pattern.trends.lengthTrend === 'decreasing' ? 'En diminution ↓' :
-               'Stable →'}
-            </div>
-          </div>
-          <div className="bg-pink-50 rounded-xl p-4">
-            <div className="text-sm text-gray-600 mb-1">Tendance Durée Règles</div>
-            <div className={`font-bold ${
-              pattern.trends.periodTrend === 'increasing' ? 'text-red-600' :
-              pattern.trends.periodTrend === 'decreasing' ? 'text-green-600' :
-              'text-blue-600'
-            }`}>
-              {pattern.trends.periodTrend === 'increasing' ? 'En augmentation ↑' :
-               pattern.trends.periodTrend === 'decreasing' ? 'En diminution ↓' :
-               'Stable →'}
-            </div>
-          </div>
+      {/* Chiffres clés */}
+      <section className="nye-dash-stats">
+        <div className="nye-dash-card nye-dash-stat">
+          <p className="nye-dash-label">Score de régularité</p>
+          <p className="nye-dash-value">
+            {pattern.regularityScore}
+            <small>/100</small>
+          </p>
         </div>
-      </div>
+        <div className="nye-dash-card nye-dash-stat">
+          <p className="nye-dash-label">Cycle moyen</p>
+          <p className="nye-dash-value">
+            {pattern.averageLength}
+            <small> j</small>
+          </p>
+          <p className="nye-dash-sub">± {pattern.lengthStdDev.toFixed(1)} j</p>
+        </div>
+        <div className="nye-dash-card nye-dash-stat">
+          <p className="nye-dash-label">Plus court / plus long</p>
+          <p className="nye-dash-value">
+            {pattern.shortestLength}–{pattern.longestLength}
+            <small> j</small>
+          </p>
+          <p className="nye-dash-sub">{pattern.lengthRange} j d’écart</p>
+        </div>
+        <div className="nye-dash-card nye-dash-stat">
+          <p className="nye-dash-label">Durée des règles</p>
+          <p className="nye-dash-value">
+            {pattern.averagePeriodLength}
+            <small> j</small>
+          </p>
+          <p className="nye-dash-sub">± {pattern.periodStdDev.toFixed(1)} j</p>
+        </div>
+      </section>
+
+      {/* Analyse NyeAI */}
+      <section className="nye-dash-card nye-dash-ai">
+        <header className="nye-dash-ai-head">
+          <div className="nye-dash-ai-title">
+            <span className="nye-dash-ai-icon">
+              <Sparkles width={18} height={18} />
+            </span>
+            <div>
+              <h2>Analyse NyeAI</h2>
+              <p>
+                {ai.status === 'loading'
+                  ? 'NyeAI étudie tes cycles…'
+                  : aiAnalysis
+                    ? 'Rédigée par l’IA à partir de tes cycles'
+                    : 'Calculée sur ton appareil'}
+              </p>
+            </div>
+          </div>
+          {isPremium && (
+            <button
+              type="button"
+              className="nye-dash-refresh"
+              onClick={() => void runAi()}
+              disabled={ai.status === 'loading'}
+              aria-label="Relancer l’analyse NyeAI"
+              title="Relancer l’analyse"
+            >
+              <RefreshCw
+                width={16}
+                height={16}
+                className={ai.status === 'loading' ? 'nye-dash-spin' : undefined}
+              />
+            </button>
+          )}
+        </header>
+
+        {ai.status === 'loading' ? (
+          <div className="nye-dash-skeleton" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </div>
+        ) : (
+          <>
+            {ai.status === 'failed' && (
+              <p className="nye-dash-note">
+                {FAILURE_TEXT[ai.reason]}
+                {ai.reason === 'not_pro' && (
+                  <Link to="/subscribe" className="nye-dash-pro-link">
+                    <Crown width={13} height={13} /> Passer Pro
+                  </Link>
+                )}
+              </p>
+            )}
+
+            {aiAnalysis && <p className="nye-dash-resume">{aiAnalysis.resume}</p>}
+
+            <h3 className="nye-dash-h3">Ce que montrent tes cycles</h3>
+            <ul className="nye-dash-list">
+              {constats.map((text, index) => (
+                <li key={index}>{text}</li>
+              ))}
+            </ul>
+
+            <h3 className="nye-dash-h3">Conseils pour toi</h3>
+            <ol className="nye-dash-list is-numbered">
+              {conseils.map((text, index) => (
+                <li key={index}>{text}</li>
+              ))}
+            </ol>
+
+            {consulter && (
+              <div className="nye-dash-consult">
+                <Stethoscope width={18} height={18} />
+                <p>
+                  {aiAnalysis?.motifConsultation ||
+                    'Avec ces écarts, un avis médical est conseillé : montre ton historique à un·e professionnel·le de santé.'}
+                </p>
+              </div>
+            )}
+
+            <p className="nye-dash-foot">
+              Analyse basée sur {pattern.cycleCount} cycles · information éducative, ne remplace pas
+              un avis médical.
+            </p>
+          </>
+        )}
+      </section>
+
+      {/* Longueur des cycles */}
+      <section className="nye-dash-card">
+        <h2 className="nye-dash-h2">
+          <TrendingUp width={18} height={18} />
+          Longueur de chaque cycle
+        </h2>
+        <p className="nye-dash-sub">En jours. La ligne pointillée est ta moyenne.</p>
+        <div className="nye-dash-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 0, left: -18 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3e8ee" vertical={false} />
+              <XAxis dataKey="label" stroke="#9ca3af" tick={{ fontSize: 11 }} tickLine={false} />
+              <YAxis
+                stroke="#9ca3af"
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                domain={['dataMin - 4', 'dataMax + 4']}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={(value) => [`${value} jours`, 'Cycle']}
+                labelFormatter={(label) => `Règles du ${label}`}
+              />
+              <ReferenceLine y={pattern.averageLength} stroke="#a855f7" strokeDasharray="5 4" />
+              <Line
+                type="linear"
+                dataKey="cycleLength"
+                stroke="#ec4899"
+                strokeWidth={2.5}
+                dot={{ fill: '#ec4899', stroke: '#fff', strokeWidth: 2, r: 5 }}
+                activeDot={{ r: 7 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* Durée des règles */}
+      <section className="nye-dash-card">
+        <h2 className="nye-dash-h2">
+          <Clock width={18} height={18} />
+          Durée des règles
+        </h2>
+        <p className="nye-dash-sub">En jours, pour chaque cycle.</p>
+        <div className="nye-dash-chart is-small">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 12, right: 12, bottom: 0, left: -18 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3e8ee" vertical={false} />
+              <XAxis dataKey="label" stroke="#9ca3af" tick={{ fontSize: 11 }} tickLine={false} />
+              <YAxis
+                stroke="#9ca3af"
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                cursor={{ fill: 'rgba(244, 114, 182, 0.08)' }}
+                formatter={(value) => [`${value} jours`, 'Règles']}
+                labelFormatter={(label) => `Règles du ${label}`}
+              />
+              <Bar dataKey="periodLength" fill="#a855f7" radius={[6, 6, 0, 0]} maxBarSize={34} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* Tendances */}
+      <section className="nye-dash-stats is-two">
+        <div className="nye-dash-card nye-dash-stat">
+          <p className="nye-dash-label">Tendance des cycles</p>
+          <p className="nye-dash-trend">{TREND_LABEL[pattern.trends.lengthTrend]}</p>
+        </div>
+        <div className="nye-dash-card nye-dash-stat">
+          <p className="nye-dash-label">Tendance des règles</p>
+          <p className="nye-dash-trend">{TREND_LABEL[pattern.trends.periodTrend]}</p>
+        </div>
+      </section>
     </div>
   );
 }

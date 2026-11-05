@@ -1,0 +1,12 @@
+{
+  "exportDate": "2026-11-05T00:00:00.000Z",
+  "cycles": [
+    { "id": "demo-cycle-1", "userId": "demo", "startDate": "2026-04-18", "endDate": "2026-04-21", "symptoms": ["Crampes"], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" },
+    { "id": "demo-cycle-2", "userId": "demo", "startDate": "2026-05-12", "endDate": "2026-05-18", "symptoms": ["Fatigue", "Crampes"], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" },
+    { "id": "demo-cycle-3", "userId": "demo", "startDate": "2026-06-22", "endDate": "2026-06-26", "symptoms": [], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" },
+    { "id": "demo-cycle-4", "userId": "demo", "startDate": "2026-07-19", "endDate": "2026-07-24", "symptoms": ["Maux de tête"], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" },
+    { "id": "demo-cycle-5", "userId": "demo", "startDate": "2026-08-23", "endDate": "2026-08-25", "symptoms": [], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" },
+    { "id": "demo-cycle-6", "userId": "demo", "startDate": "2026-09-14", "endDate": "2026-09-19", "symptoms": ["Fatigue"], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" },
+    { "id": "demo-cycle-7", "userId": "demo", "startDate": "2026-10-22", "endDate": "2026-10-26", "symptoms": ["Crampes"], "notes": "Donnée de démonstration", "source": "imported", "createdAt": "2026-11-05T00:00:00.000Z" }
+  ]
+}
