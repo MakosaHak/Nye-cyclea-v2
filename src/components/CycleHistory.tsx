@@ -90,7 +90,8 @@ export function CycleHistory() {
         <h2 className="text-gray-800 px-1 font-bold text-xl">Historique des cycles</h2>
 
         {sortedCycles.map((cycle, index) => {
-          const nextCycle = sortedCycles[index + 1];
+          // La liste est triée du plus récent au plus ancien : le cycle suivant dans le temps est à index - 1
+          const nextCycle = sortedCycles[index - 1];
           const cycleDuration = getCycleDuration(cycle, nextCycle);
           const periodDuration = getPeriodDuration(cycle);
 
