@@ -79,6 +79,332 @@ body {
   outline: none !important;
 }
 
+/* ======================================
+   NyeAI — écran de chat
+   CSS dédié (la feuille Tailwind de ce fichier est pré-générée :
+   les classes utilitaires absentes ne peuvent pas être utilisées ici).
+   ====================================== */
+.nye-chat {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+}
+.nye-chat-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.nye-chat-hero {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 1.1rem;
+  color: #fff;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 63, 94, 0.78),
+    rgba(236, 72, 153, 0.74),
+    rgba(168, 85, 247, 0.7)
+  );
+  box-shadow: 0 8px 28px rgba(244, 63, 94, 0.14);
+}
+.nye-chat-hero-icon {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nye-chat-hero-text {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.nye-chat-hero-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+}
+.nye-chat-hero-status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.92);
+}
+.nye-chat-hero-status span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nye-chat-hero-status svg {
+  flex: none;
+}
+.nye-chat-reset {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.75rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.15s;
+}
+.nye-chat-reset:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.nye-chat-messages {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.nye-chat-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.nye-chat-row.is-user {
+  flex-direction: row-reverse;
+}
+.nye-chat-avatar {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-top: 0.1rem;
+  border-radius: 9999px;
+  background: #fce7f3;
+  color: #db2777;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nye-chat-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  max-width: 82%;
+  align-items: flex-start;
+}
+.nye-chat-row.is-user .nye-chat-bubble-wrap {
+  align-items: flex-end;
+}
+.nye-chat-bubble {
+  padding: 0.65rem 0.95rem;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(252, 231, 243, 0.9);
+  border-radius: 1.1rem;
+  border-bottom-left-radius: 0.35rem;
+  box-shadow: 0 2px 10px rgba(244, 63, 94, 0.06);
+}
+.nye-chat-row.is-user .nye-chat-bubble {
+  color: #fff;
+  border: none;
+  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+  border-radius: 1.1rem;
+  border-bottom-right-radius: 0.35rem;
+  box-shadow: 0 3px 12px rgba(236, 72, 153, 0.2);
+}
+.nye-chat-time {
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+  color: #9ca3af;
+}
+.nye-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+}
+.nye-chat-typing span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #f472b6;
+  animation: nye-chat-bounce 1s infinite ease-in-out;
+}
+.nye-chat-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.nye-chat-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes nye-chat-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+/* Dock bas : toujours visible, ne rétrécit jamais */
+.nye-chat-dock {
+  flex: none;
+  padding: 0.5rem 0.75rem 0.4rem;
+  border-top: 1px solid rgba(252, 231, 243, 0.9);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+/* Questions rapides : une seule ligne, défilement horizontal, sans barre visible */
+.nye-chat-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.1rem 0.1rem 0.5rem;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.nye-chat-chips::-webkit-scrollbar {
+  display: none;
+}
+.nye-chat-chip {
+  flex: none;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #be185d;
+  background: #fff;
+  border: 1px solid #fbcfe8;
+  border-radius: 9999px;
+  box-shadow: 0 1px 3px rgba(244, 63, 94, 0.08);
+  transition:
+    background 0.15s,
+    transform 0.1s;
+}
+.nye-chat-chip:hover {
+  background: #fdf2f8;
+}
+.nye-chat-chip:active {
+  transform: scale(0.97);
+}
+.nye-chat-chip:disabled {
+  opacity: 0.5;
+}
+.nye-chat-chip.is-pro {
+  color: #92400e;
+  font-weight: 600;
+  background: linear-gradient(90deg, #fffbeb, #fff7ed);
+  border-color: #fde68a;
+  text-decoration: none;
+}
+
+.nye-chat-composer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.3rem 0.3rem 1rem;
+  background: #fff;
+  border: 1px solid #fbcfe8;
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.1);
+}
+.nye-chat-input {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 2.5rem;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #1f2937;
+}
+.nye-chat-input::placeholder {
+  color: #9ca3af;
+}
+.nye-chat-send {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f43f5e, #ec4899);
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.1s,
+    opacity 0.15s;
+}
+.nye-chat-send:active {
+  transform: scale(0.95);
+}
+.nye-chat-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nye-chat-disclaimer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.625rem;
+  line-height: 1.3;
+  text-align: center;
+  color: #9ca3af;
+}
+.nye-chat-disclaimer svg {
+  flex: none;
+}
+
 /* Glass nav utility */
 .glass-nav {
   background: rgba(255, 255, 255, 0.8);

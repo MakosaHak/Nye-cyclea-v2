@@ -13,6 +13,8 @@ RÈGLES:
 
 export type OfflineFaqItem = {
   id: string;
+  /** Libellé court affiché dans la pastille */
+  label: string;
   question: string;
   answer: string;
 };
@@ -20,48 +22,56 @@ export type OfflineFaqItem = {
 export const OFFLINE_FAQ: OfflineFaqItem[] = [
   {
     id: 'cycle-normal',
+    label: 'Cycle normal',
     question: "Qu'est-ce qu'un cycle normal ?",
     answer:
       "Un cycle menstruel dure en moyenne 21 à 35 jours, avec des règles souvent entre 3 et 7 jours. Chaque corps est différent : l'important est de repérer ton propre rythme sur plusieurs mois. Tu peux suivre tes cycles dans Nye Cyclea pour voir tes moyennes.",
   },
   {
     id: 'ovulation',
+    label: 'Ovulation',
     question: "Comment repérer l'ovulation ?",
     answer:
       "L'ovulation survient en général vers le milieu du cycle (souvent autour du 14e jour sur un cycle de 28 jours). La fenêtre fertile inclut quelques jours avant et le jour de l'ovulation. Les estimations dans l'app t'aident à te repérer, mais elles ne remplacent pas une contraception si tu veux éviter une grossesse.",
   },
   {
     id: 'crampes',
+    label: 'Crampes',
     question: 'Crampes pendant les règles',
     answer:
       "Les crampes sont fréquentes au début des règles. Chaleur locale, repos et activité légère soulagent parfois. Évite l'automédication sans avis médical. Douleur intense, fièvre ou saignement anormal → consultation recommandée.",
   },
   {
     id: 'irregulier',
+    label: 'Cycle irrégulier',
     question: 'Cycle irrégulier : que faire ?',
     answer:
       "Un retard peut venir du stress, d'un changement de rythme ou d'une variation hormonale. Cycles très irréguliers sur plusieurs mois : en parler à un·e professionnel·le. Note tes cycles dans l'app pour repérer un pattern.",
   },
   {
     id: 'regles',
+    label: 'Les règles',
     question: 'Que se passe-t-il pendant les règles ?',
     answer:
       "Les règles correspondent à l'élimination de la muqueuse utérine. Des douleurs légères ou une fatigue peuvent être fréquentes. Si tu saignes très abondamment ou si la douleur t'empêche de vivre normalement, parle-en à un·e professionnel·le de santé.",
   },
   {
     id: 'spm',
+    label: 'SPM',
     question: 'Qu’est-ce que le SPM ?',
     answer:
       "Le SPM regroupe des signes avant les règles : humeur changeante, tensions, fatigue, seins sensibles… Reposer, s'hydrater et noter tes symptômes peut aider. Si le SPM perturbe fortement ta vie, un·e professionnel·le peut proposer des solutions adaptées.",
   },
   {
     id: 'contraception',
+    label: 'Contraception',
     question: 'Quelles méthodes de contraception existent ?',
     answer:
       'Il existe plusieurs méthodes (préservatif, pilule, implant, etc.). Le choix dépend de ta santé et de tes objectifs. Seul·e un·e professionnel·le de santé ou une sage-femme peut te conseiller la méthode la plus adaptée.',
   },
   {
     id: 'hygiene',
+    label: 'Hygiène intime',
     question: 'Comment prendre soin de son hygiène intime ?',
     answer:
       "Change régulièrement protections ou cup, lave-toi les mains, privilégie des produits adaptés à ta peau. En cas d'odeur forte, démangeaisons ou brûlures persistantes, consulte pour écarter une infection.",
@@ -69,7 +79,7 @@ export const OFFLINE_FAQ: OfflineFaqItem[] = [
 ];
 
 export const OFFLINE_TYPED_REPLY =
-  "Je suis momentanément hors ligne et je ne peux pas répondre librement à ta question pour l'instant. Tu peux choisir une des questions ci-dessous : la réponse s'affichera tout de suite.";
+  "Je suis momentanément hors ligne et je ne peux pas répondre librement à ta question pour l'instant. Tu peux choisir une des questions rapides juste au-dessus de la barre de message : la réponse s'affichera tout de suite.";
 
 export const OFFLINE_SESSION_REPLY =
   'Pour utiliser NyeAI, ta session a expiré. Va dans Réglages → déconnecte-toi → reconnecte-toi avec ton identifiant et ton mot de passe.';
@@ -78,7 +88,7 @@ export const OFFLINE_NOT_PRO_REPLY =
   "Ton abonnement Pro n'est pas reconnu par le serveur. Vérifie la table profiles dans Supabase (subscription_type = monthly ou yearly).";
 
 export const OFFLINE_SERVICE_REPLY =
-  'NyeAI est temporairement indisponible. En attendant, choisis une question ci-dessous pour une réponse immédiate.';
+  'NyeAI est temporairement indisponible. En attendant, choisis une question rapide au-dessus de la barre de message pour une réponse immédiate.';
 
 export type NyeAiFailReason = 'session' | 'not_pro' | 'service' | 'offline';
 

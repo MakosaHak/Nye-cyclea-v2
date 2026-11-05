@@ -67,7 +67,124 @@ function buildOpenAiMessages(
   return messages;
 }
 
-/** Google Gemini — quota gratuit généreux via Google AI Studio */
+/**
+ * Modèles Gemini essayés dans l'ordre. Google retire régulièrement les anciens
+ * modèles (ex. gemini-1.5-flash) : on ne dépend donc jamais d'un seul nom.
+ * GEMINI_MODEL (secret Supabase) passe en premier s'il est défini.
+ */
+const GEMINI_MODEL_CANDIDATES = [
+  // Le plus rapide d'abord : mesuré en production, « flash-lite » répond en ~2 s
+  // alors que « gemini-flash-latest » dépassait le délai.
+  'gemini-flash-lite-latest',
+  'gemini-3.8-flash',
+  'gemini-flash-latest',
+];
+
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
+
+/** Délai maximum par tentative de modèle */
+const GEMINI_TIMEOUT_MS = 10000;
+
+/** Erreurs passagères (surcharge, quota à la minute, délai dépassé) : une nouvelle tentative a du sens */
+const GEMINI_TRANSIENT = /\b(429|500|503)\)|timed out|TimeoutError|aborted/i;
+
+/**
+ * Gemini exige une conversation qui commence par l'utilisatrice et alterne les rôles.
+ * On retire donc le message d'accueil de l'assistante et on fusionne les tours consécutifs.
+ */
+function normalizeHistory(history: ChatTurn[], prompt: string): ChatTurn[] {
+  const turns: ChatTurn[] = history.map((t) => ({ role: t.role, content: t.content.trim() }));
+  if (!turns.length || turns[turns.length - 1].role !== 'user' || turns[turns.length - 1].content !== prompt) {
+    turns.push({ role: 'user', content: prompt });
+  }
+  const merged: ChatTurn[] = [];
+  for (const turn of turns) {
+    if (!turn.content) continue;
+    if (!merged.length && turn.role !== 'user') continue;
+    const last = merged[merged.length - 1];
+    if (last && last.role === turn.role) {
+      last.content = `${last.content}\n${turn.content}`;
+    } else {
+      merged.push({ ...turn });
+    }
+  }
+  return merged;
+}
+
+/** Dernier recours : demande à Google la liste des modèles « flash » réellement disponibles. */
+async function discoverGeminiModels(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${GEMINI_API}/models?pageSize=200&key=${apiKey}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const names: string[] = (data.models || [])
+      .filter((m: { name?: string; supportedGenerationMethods?: string[] }) =>
+        m.supportedGenerationMethods?.includes('generateContent')
+      )
+      .map((m: { name: string }) => m.name.replace(/^models\//, ''))
+      .filter(
+        (n: string) =>
+          n.startsWith('gemini-') &&
+          n.includes('flash') &&
+          !/image|tts|audio|live|embedding|vision|exp|preview|omni|robotics|computer/.test(n)
+      );
+    // Les alias « latest » puis les versions les plus récentes d'abord
+    return names.sort((x, y) => {
+      const lx = x.includes('latest') ? 0 : 1;
+      const ly = y.includes('latest') ? 0 : 1;
+      return lx - ly || y.localeCompare(x, undefined, { numeric: true });
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function callGeminiModel(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  turns: ChatTurn[]
+): Promise<AiResult> {
+  const res = await fetch(`${GEMINI_API}/models/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // Un modèle qui ne répond pas ne doit pas bloquer toute la requête
+    signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: turns.map((turn) => ({
+        role: turn.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: turn.content }],
+      })),
+      generationConfig: {
+        temperature: 0.65,
+        // Marge large : les modèles récents consomment une partie du budget en « réflexion »
+        maxOutputTokens: 2048,
+      },
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const msg = data.error?.message || JSON.stringify(data);
+    throw new Error(`Gemini (${model}, ${res.status}): ${msg}`);
+  }
+
+  const parts: { text?: string; thought?: boolean }[] = data.candidates?.[0]?.content?.parts || [];
+  const text = parts
+    .filter((p) => !p.thought && typeof p.text === 'string')
+    .map((p) => p.text)
+    .join('')
+    .trim();
+  if (!text) throw new Error(`Gemini (${model}): réponse vide`);
+
+  return { text, provider: 'gemini', model };
+}
+
+/** Google Gemini — quota gratuit via Google AI Studio, avec repli automatique de modèle */
 async function callGemini(
   systemPrompt: string,
   history: ChatTurn[],
@@ -76,47 +193,47 @@ async function callGemini(
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY manquante');
 
-  const model = Deno.env.get('GEMINI_MODEL') || 'gemini-1.5-flash';
+  const turns = normalizeHistory(history, prompt);
+  const preferred = Deno.env.get('GEMINI_MODEL')?.trim();
+  const tried = new Set<string>();
+  const errors: string[] = [];
 
-  const contents: { role: string; parts: { text: string }[] }[] = [];
+  const tryModels = async (models: string[]): Promise<AiResult | null> => {
+    for (const model of models) {
+      if (!model || tried.has(model)) continue;
+      tried.add(model);
+      try {
+        return await callGeminiModel(apiKey, model, systemPrompt, turns);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn('[chat-ai]', msg);
+        errors.push(msg);
+        // Clé refusée : inutile d'essayer les autres modèles
+        if (/API key|API_KEY_INVALID|PERMISSION_DENIED/i.test(msg)) break;
+      }
+    }
+    return null;
+  };
 
-  for (const turn of history) {
-    contents.push({
-      role: turn.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: turn.content.trim() }],
-    });
+  const primary = [preferred ?? '', ...GEMINI_MODEL_CANDIDATES];
+  const known = await tryModels(primary);
+  if (known) return known;
+
+  // Gemini renvoie souvent « forte demande » (503) pendant quelques secondes :
+  // on laisse passer le pic puis on retente une fois les mêmes modèles.
+  if (errors.some((e) => GEMINI_TRANSIENT.test(e))) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    tried.clear();
+    const retried = await tryModels(primary);
+    if (retried) return retried;
   }
 
-  if (!history.length || history[history.length - 1]?.content !== prompt) {
-    contents.push({ role: 'user', parts: [{ text: prompt }] });
-  }
+  const discovered = await tryModels((await discoverGeminiModels(apiKey)).slice(0, 4));
+  if (discovered) return discovered;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      generationConfig: {
-        temperature: 0.65,
-        maxOutputTokens: 700,
-      },
-    }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    const msg = data.error?.message || JSON.stringify(data);
-    throw new Error(`Gemini: ${msg}`);
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) throw new Error('Gemini: réponse vide');
-
-  return { text, provider: 'gemini', model };
+  throw new Error(
+    errors.map((e) => e.slice(0, 140)).join(' | ') || 'Gemini: aucun modèle disponible'
+  );
 }
 
 /** Groq — inférence rapide, tier gratuit (Llama) */
