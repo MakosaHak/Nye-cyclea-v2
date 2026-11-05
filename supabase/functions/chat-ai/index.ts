@@ -12,7 +12,8 @@ RÈGLES:
 - Informations éducatives et générales uniquement.
 - Symptômes graves ou urgence → conseiller un professionnel de santé ou les urgences.
 - Français simple, chaleureux, adapté au contexte africain quand c'est pertinent.
-- Réponses courtes (3 à 6 phrases sauf si l'utilisatrice demande plus de détails).`;
+- Réponses courtes (3 à 6 phrases sauf si l'utilisatrice demande plus de détails).
+- Texte simple uniquement : pas de Markdown, pas d'astérisques, pas de titres ni de listes à puces.`;
 
 type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
@@ -221,8 +222,9 @@ async function callGemini(
 
   // Gemini renvoie souvent « forte demande » (503) pendant quelques secondes :
   // on laisse passer le pic puis on retente une fois les mêmes modèles.
-  if (errors.some((e) => GEMINI_TRANSIENT.test(e))) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+  for (const delayMs of [1500, 3000]) {
+    if (!errors.some((e) => GEMINI_TRANSIENT.test(e))) break;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
     tried.clear();
     const retried = await tryModels(primary);
     if (retried) return retried;

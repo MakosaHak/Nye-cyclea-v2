@@ -9,7 +9,8 @@ RÈGLES:
 - Informations éducatives et générales uniquement.
 - Symptômes graves ou urgence → conseiller un professionnel de santé ou les urgences.
 - Français simple, chaleureux, adapté au contexte africain quand c'est pertinent.
-- Réponses courtes (3 à 6 phrases sauf si l'utilisatrice demande plus de détails).`;
+- Réponses courtes (3 à 6 phrases sauf si l'utilisatrice demande plus de détails).
+- Texte simple uniquement : pas de Markdown, pas d'astérisques, pas de titres ni de listes à puces.`;
 
 export type OfflineFaqItem = {
   id: string;
@@ -121,6 +122,27 @@ function buildUserContext(stats: UserStats | null, cycles: CycleEntry[]): string
     .join(' ');
 }
 
+const FALLBACK_REPLIES = [
+  OFFLINE_TYPED_REPLY,
+  OFFLINE_SESSION_REPLY,
+  OFFLINE_NOT_PRO_REPLY,
+  OFFLINE_SERVICE_REPLY,
+];
+
+/** Le chat affiche du texte brut : on retire le Markdown que le modèle ajoute parfois. */
+function cleanAiText(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/gs, '$1')
+    .replace(/__(.+?)__/gs, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[*-]\s+/gm, '• ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function parseFunctionError(error: unknown): Promise<NyeAiFailReason> {
   if (error instanceof FunctionsHttpError) {
     try {
@@ -148,8 +170,10 @@ async function askCloudAi(
   }
 
   const recentHistory = history
-    .slice(-10)
     .filter((m) => m.role === 'user' || m.role === 'assistant')
+    // Les messages de repli (« indisponible », « hors ligne »…) ne sont pas de vraies réponses
+    .filter((m) => !FALLBACK_REPLIES.includes(m.content))
+    .slice(-10)
     .map((m) => ({ role: m.role, content: m.content }));
 
   const { data, error } = await supabase.functions.invoke('chat-ai', {
@@ -178,7 +202,7 @@ async function askCloudAi(
   }
 
   if (data?.response && typeof data.response === 'string') {
-    return { text: data.response.trim() };
+    return { text: cleanAiText(data.response) };
   }
 
   return { fail: 'service' };
@@ -212,7 +236,12 @@ export async function askNyeAi(
   const contextBlock = buildUserContext(options.stats, options.cycles);
 
   try {
-    const result = await askCloudAi(trimmed, history, contextBlock);
+    let result = await askCloudAi(trimmed, history, contextBlock);
+    // Le service gratuit d'IA sature par moments : une seconde tentative suffit le plus souvent
+    if ('fail' in result && result.fail === 'service') {
+      await wait(1200);
+      result = await askCloudAi(trimmed, history, contextBlock);
+    }
     if ('text' in result) return { text: result.text, cloud: true };
     return { text: failMessage(result.fail), cloud: false, failReason: result.fail };
   } catch (e) {
