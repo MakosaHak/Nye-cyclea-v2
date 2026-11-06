@@ -19,7 +19,8 @@ export interface AiCycleAnalysis {
 
 export type AiAnalysisFailure = 'offline' | 'not_pro' | 'session' | 'service';
 
-const CACHE_KEY = 'nye_cycle_ai_analysis_v1';
+// v2 : les avis demandés avant la limitation aux seules durées ne sont plus réaffichés
+const CACHE_KEY = 'nye_cycle_ai_analysis_v2';
 
 const ANALYSIS_SYSTEM_PROMPT = `Tu es NyeAI, l'assistante de Nye Cyclea, spécialisée dans l'analyse du cycle menstruel.
 
@@ -28,7 +29,7 @@ On te donne les statistiques réelles des cycles d'une utilisatrice. Analyse-les
 
 RÈGLES:
 - "resume" : 2 à 3 phrases, tu tutoies l'utilisatrice, ton chaleureux et rassurant, tu cites ses vrais chiffres.
-- "constats" : 2 à 4 observations précises tirées des chiffres (écarts, tendance, cycles les plus longs ou courts, symptômes notés).
+- "constats" : 2 à 4 observations précises tirées des chiffres (écarts, tendance, cycles les plus longs ou courts).
 - "conseils" : 3 à 5 conseils concrets et pratiques, adaptés à SA situation et au contexte africain quand c'est pertinent (hygiène de vie, suivi, alimentation, stress, sommeil).
 - "consulter" : true si les chiffres justifient un avis médical (écarts de 20 jours ou plus, cycles de plus de 45 jours ou de moins de 21 jours, règles de plus de 8 jours), sinon false.
 - "motifConsultation" : une phrase si consulter est true, sinon "".
@@ -57,6 +58,14 @@ export function readCachedAiAnalysis(signature: string): AiCycleAnalysis | null 
   }
 }
 
+export function clearCachedAiAnalysis(): void {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
 function writeCache(signature: string, analysis: AiCycleAnalysis): void {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ signature, analysis }));
@@ -65,26 +74,30 @@ function writeCache(signature: string, analysis: AiCycleAnalysis): void {
   }
 }
 
+/**
+ * Confidentialité : seules des durées en jours quittent l'appareil.
+ * Aucune date, aucun symptôme, aucune note et aucun identifiant ne sont placés dans le message.
+ */
 function buildPrompt(cycles: CycleEntry[], pattern: CyclePattern, local: CycleAnalysis): string {
-  const sorted = [...cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
-  const lines = sorted.map((cycle, index) => {
-    const next = sorted[index + 1];
-    const length = next
-      ? Math.round((Date.parse(next.startDate.slice(0, 10)) - Date.parse(cycle.startDate.slice(0, 10))) / 86400000)
-      : undefined;
-    const parts = [`Règles commencées le ${cycle.startDate.slice(0, 10)}`];
-    if (cycle.endDate) parts.push(`terminées le ${cycle.endDate.slice(0, 10)}`);
-    if (length) parts.push(`cycle de ${length} jours`);
-    if (cycle.symptoms?.length) parts.push(`symptômes notés : ${cycle.symptoms.join(', ')}`);
-    if (cycle.notes) parts.push(`note : ${cycle.notes.slice(0, 120)}`);
-    return `- ${parts.join(', ')}`;
-  });
+  const periodLengths = [...cycles]
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .filter((cycle) => cycle.endDate)
+    .map(
+      (cycle) =>
+        Math.round(
+          (Date.parse(cycle.endDate!.slice(0, 10)) - Date.parse(cycle.startDate.slice(0, 10))) /
+            86400000
+        ) + 1
+    )
+    .filter((days) => days >= 1 && days <= 15);
 
   return [
-    'Voici les données de suivi de l’utilisatrice.',
+    'Voici les durées relevées par l’utilisatrice (aucune date ni donnée personnelle).',
     '',
-    'CYCLES (du plus ancien au plus récent) :',
-    ...lines,
+    `DURÉES DES CYCLES, du plus ancien au plus récent, en jours : ${pattern.lengths.join(', ')}`,
+    periodLengths.length
+      ? `DURÉES DES RÈGLES, du plus ancien au plus récent, en jours : ${periodLengths.join(', ')}`
+      : 'DURÉES DES RÈGLES : non renseignées',
     '',
     'STATISTIQUES CALCULÉES :',
     `- Cycles complets mesurés : ${pattern.cycleCount}`,

@@ -18,7 +18,7 @@ export function PrivacyPolicyContent() {
             Cadre Juridique Togo & International
           </p>
           <p className="text-[11px] text-gray-500 mt-2 font-medium">
-            Dernière mise à jour : 10 mai 2026
+            Dernière mise à jour : 6 novembre 2026
           </p>
         </div>
 
@@ -68,6 +68,19 @@ export function PrivacyPolicyContent() {
                 Identifiant, mot de passe (haché) et statut d'abonnement. Ces informations sont
                 nécessaires pour la gestion de votre profil et sont hébergées sur des serveurs
                 sécurisés bénéficiant d'un chiffrement TLS de bout en bout.
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <h3 className="text-xs font-bold text-gray-800 uppercase mb-2">
+                Assistante NyeAI (comptes Pro)
+              </h3>
+              <p className="text-xs leading-relaxed">
+                Les questions posées à NyeAI transitent par une fonction serveur sécurisée (Edge
+                Function) vers le modèle d'intelligence artificielle,{' '}
+                <strong>sans stockage permanent des messages</strong>. L'analyse de la régularité
+                est calculée sur votre terminal. Si vous demandez vous-même l'avis de NyeAI sur
+                cette analyse, seules les durées de vos cycles et de vos règles, en jours, lui sont
+                transmises : ni dates, ni symptômes, ni notes, ni identifiant.
               </p>
             </div>
           </div>

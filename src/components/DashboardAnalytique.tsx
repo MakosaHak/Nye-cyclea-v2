@@ -27,6 +27,7 @@ import { useCyclesContext } from '../contexts/CyclesContext';
 import { CycleAnalysisService } from '../services/cycleAnalysisService';
 import {
   analyzeCyclesWithAi,
+  clearCachedAiAnalysis,
   cyclesSignature,
   readCachedAiAnalysis,
   type AiAnalysisFailure,
@@ -90,23 +91,19 @@ export function DashboardAnalytique() {
     );
   }, [cycles, data]);
 
-  // À chaque changement des cycles : on reprend l'analyse en cache, sinon on interroge NyeAI
+  // L'analyse est calculée sur l'appareil. NyeAI n'est interrogée que sur demande explicite :
+  // on se contente ici de réafficher un avis déjà demandé pour ces mêmes cycles.
   useEffect(() => {
-    if (!data) {
-      setAi({ status: 'idle' });
-      return;
-    }
-    const cached = readCachedAiAnalysis(signature);
-    if (cached) {
-      setAi({ status: 'ready', analysis: cached });
-    } else if (isPremium) {
-      void runAi();
-    } else {
-      setAi({ status: 'failed', reason: 'not_pro' });
-    }
-    // runAi dépend de `data` et `cycles`, déjà couverts par `signature`
+    const cached = data ? readCachedAiAnalysis(signature) : null;
+    setAi(cached ? { status: 'ready', analysis: cached } : { status: 'idle' });
+    // `data` est déjà couvert par `signature`
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, isPremium]);
+  }, [signature]);
+
+  const backToLocal = useCallback(() => {
+    clearCachedAiAnalysis();
+    setAi({ status: 'idle' });
+  }, []);
 
   if (loading) {
     return (
@@ -138,12 +135,15 @@ export function DashboardAnalytique() {
 
   return (
     <div className="nye-dash">
-      {/* Taux d'irrégularité */}
+      {/* Score de régularité */}
       <section className={`nye-dash-card nye-dash-hero is-${level}`}>
         <div className="nye-dash-hero-top">
           <div>
-            <p className="nye-dash-label">Taux d’irrégularité</p>
-            <p className="nye-dash-big">{pattern.irregularityRate} %</p>
+            <p className="nye-dash-label">Score de régularité</p>
+            <p className="nye-dash-big">
+              {pattern.regularityScore}
+              <small>/100</small>
+            </p>
           </div>
           <div className="nye-dash-hero-badge">
             {analysis.isIrregular ? (
@@ -161,9 +161,9 @@ export function DashboardAnalytique() {
         <div
           className="nye-dash-meter"
           role="img"
-          aria-label={`Taux d’irrégularité : ${pattern.irregularityRate} %`}
+          aria-label={`Score de régularité : ${pattern.regularityScore} sur 100`}
         >
-          <span style={{ width: `${Math.max(4, pattern.irregularityRate)}%` }} />
+          <span style={{ width: `${Math.max(4, pattern.regularityScore)}%` }} />
         </div>
         <p className="nye-dash-summary">{summary}</p>
       </section>
@@ -171,11 +171,12 @@ export function DashboardAnalytique() {
       {/* Chiffres clés */}
       <section className="nye-dash-stats">
         <div className="nye-dash-card nye-dash-stat">
-          <p className="nye-dash-label">Score de régularité</p>
+          <p className="nye-dash-label">Taux d’irrégularité</p>
           <p className="nye-dash-value">
-            {pattern.regularityScore}
-            <small>/100</small>
+            {pattern.irregularityRate}
+            <small> %</small>
           </p>
+          <p className="nye-dash-sub">cycles à plus de 3 j de la médiane</p>
         </div>
         <div className="nye-dash-card nye-dash-stat">
           <p className="nye-dash-label">Cycle moyen</p>
@@ -183,7 +184,10 @@ export function DashboardAnalytique() {
             {pattern.averageLength}
             <small> j</small>
           </p>
-          <p className="nye-dash-sub">± {pattern.lengthStdDev.toFixed(1)} j</p>
+          <p className="nye-dash-sub">
+            ± {pattern.lengthStdDev.toFixed(1)} j · variance{' '}
+            {(pattern.lengthStdDev * pattern.lengthStdDev).toFixed(1)}
+          </p>
         </div>
         <div className="nye-dash-card nye-dash-stat">
           <p className="nye-dash-label">Plus court / plus long</p>
@@ -203,7 +207,7 @@ export function DashboardAnalytique() {
         </div>
       </section>
 
-      {/* Analyse NyeAI */}
+      {/* Analyse IA : calcul local, avis NyeAI facultatif */}
       <section className="nye-dash-card nye-dash-ai">
         <header className="nye-dash-ai-head">
           <div className="nye-dash-ai-title">
@@ -211,17 +215,17 @@ export function DashboardAnalytique() {
               <Sparkles width={18} height={18} />
             </span>
             <div>
-              <h2>Analyse NyeAI</h2>
+              <h2>Analyse IA</h2>
               <p>
                 {ai.status === 'loading'
-                  ? 'NyeAI étudie tes cycles…'
+                  ? 'NyeAI étudie tes durées de cycle…'
                   : aiAnalysis
-                    ? 'Rédigée par l’IA à partir de tes cycles'
-                    : 'Calculée sur ton appareil'}
+                    ? 'Avis de NyeAI, rédigé à ta demande'
+                    : 'Calculée sur ton appareil, sans connexion'}
               </p>
             </div>
           </div>
-          {isPremium && (
+          {isPremium && aiAnalysis && (
             <button
               type="button"
               className="nye-dash-refresh"
@@ -267,7 +271,7 @@ export function DashboardAnalytique() {
               ))}
             </ul>
 
-            <h3 className="nye-dash-h3">Conseils pour toi</h3>
+            <h3 className="nye-dash-h3">Recommandations</h3>
             <ol className="nye-dash-list is-numbered">
               {conseils.map((text, index) => (
                 <li key={index}>{text}</li>
@@ -281,6 +285,31 @@ export function DashboardAnalytique() {
                   {aiAnalysis?.motifConsultation ||
                     'Avec ces écarts, un avis médical est conseillé : montre ton historique à un·e professionnel·le de santé.'}
                 </p>
+              </div>
+            )}
+
+            {aiAnalysis ? (
+              <button type="button" className="nye-dash-link" onClick={backToLocal}>
+                Revenir à l’analyse calculée sur l’appareil
+              </button>
+            ) : (
+              <div className="nye-dash-ask">
+                <p>
+                  <strong>Envie d’un avis plus détaillé ?</strong> C’est facultatif. Si tu
+                  acceptes, seules les durées de tes cycles et de tes règles, en jours, sont
+                  envoyées à NyeAI : ni dates, ni symptômes, ni notes, ni identifiant.
+                </p>
+                {isPremium ? (
+                  <button type="button" className="nye-dash-ask-btn" onClick={() => void runAi()}>
+                    <Sparkles width={15} height={15} />
+                    Demander l’avis de NyeAI
+                  </button>
+                ) : (
+                  <Link to="/subscribe" className="nye-dash-ask-btn is-locked">
+                    <Crown width={15} height={15} />
+                    Avis NyeAI réservé à Pro
+                  </Link>
+                )}
               </div>
             )}
 

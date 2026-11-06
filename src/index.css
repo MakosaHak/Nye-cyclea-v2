@@ -603,6 +603,59 @@ body {
 .nye-dash-refresh:disabled {
   opacity: 0.6;
 }
+.nye-dash-big small {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #9ca3af;
+}
+.nye-dash-ask {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px dashed #e9d5ff;
+}
+.nye-dash-ask p {
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #6b7280;
+}
+.nye-dash-ask p strong {
+  color: #374151;
+}
+.nye-dash-ask-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 0;
+  border-radius: 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #ec4899, #a855f7);
+  text-decoration: none;
+  cursor: pointer;
+}
+.nye-dash-ask-btn.is-locked {
+  color: #92400e;
+  background: #fef3c7;
+}
+.nye-dash-link {
+  display: block;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a21caf;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .nye-dash-resume {
   margin: 0 0 0.25rem;
   font-size: 0.92rem;

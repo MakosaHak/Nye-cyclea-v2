@@ -485,7 +485,7 @@ export class PDFService {
     const weeks = Math.min(8, Math.ceil((diffDays(gridStart, facts.nextStart) + 1) / 7));
     const cellHeight = 7.6;
     ensureSpace(weeks * cellHeight + 30);
-    sectionTitle('Calendrier du cycle');
+    sectionTitle('Calendrier et étapes du cycle');
 
     const gridWidth = 106;
     const cellWidth = gridWidth / 7;
